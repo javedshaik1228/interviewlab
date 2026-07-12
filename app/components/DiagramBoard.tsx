@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import "@excalidraw/excalidraw/index.css";
 
 const Excalidraw = dynamic(
@@ -32,6 +32,8 @@ type DiagramElement = {
 };
 
 export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals) => void }) {
+  const lastSignalFingerprint = useRef("");
+
   const handleChange = useCallback(
     (rawElements: readonly DiagramElement[]) => {
       const elements = rawElements.filter((element) => !element.isDeleted);
@@ -41,13 +43,21 @@ export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals)
         .filter(Boolean);
       const labelText = labels.join(" ").toLowerCase();
 
-      onSignals({
+      const nextSignals: BoardSignals = {
         shapes: elements.filter((element) => !["arrow", "line", "text", "freedraw"].includes(element.type)).length,
         connections: elements.filter((element) => element.type === "arrow" || element.type === "line").length,
         labels: labels.slice(0, 24),
         stores: (labelText.match(/db|database|store|redis|cache|sql|dynamo|kafka|queue/g) ?? []).length,
         asyncComponents: (labelText.match(/queue|event|stream|kafka|worker|async|pub.?sub/g) ?? []).length,
-      });
+      };
+      const fingerprint = JSON.stringify(nextSignals);
+
+      // Excalidraw emits onChange after every internal app-state update, not
+      // only after the scene changes. Avoid feeding identical analytics back
+      // into the parent and triggering an editor update loop.
+      if (fingerprint === lastSignalFingerprint.current) return;
+      lastSignalFingerprint.current = fingerprint;
+      onSignals(nextSignals);
     },
     [onSignals],
   );
