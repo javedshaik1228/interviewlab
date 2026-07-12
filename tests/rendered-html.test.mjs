@@ -41,3 +41,20 @@ test("keeps Excalidraw's React 19 integration loop-safe", async () => {
   assert.match(tunnel, /const registeredEntry = entry\.current/);
   assert.match(viteConfig, /"tunnel-rat": fileURLToPath/);
 });
+
+test("includes the guided delivery framework learning mode", async () => {
+  const [app, engine, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/interview-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /Guided learning/);
+  assert.match(app, /hellointerview\.com\/learn\/system-design\/in-a-hurry\/delivery/);
+  assert.match(app, /advanceFramework/);
+  assert.match(engine, /export const deliveryFramework/);
+  assert.match(engine, /id: "requirements"/);
+  assert.match(engine, /id: "deep-dives"/);
+  assert.match(css, /\.guided-coach/);
+  assert.match(css, /\.guided-strip/);
+});

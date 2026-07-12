@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  BookOpen,
   BrainCircuit,
   Check,
   ChevronLeft,
@@ -9,6 +10,7 @@ import {
   Clock3,
   FileText,
   Flag,
+  ExternalLink,
   Lightbulb,
   MessageSquareText,
   Mic,
@@ -24,10 +26,14 @@ import { ChangeEvent, FormEvent, useCallback, useMemo, useRef, useState } from "
 import { BoardSignals, DiagramBoard } from "./DiagramBoard";
 import {
   createArchitectReply,
+  deliveryFramework,
+  getGuidedFollowUp,
+  getGuidedNudge,
   getNudge,
   Level,
   ScenarioId,
   scenarios,
+  SessionMode,
   Topic,
   topicLabels,
 } from "../lib/interview-engine";
@@ -77,6 +83,7 @@ export function InterviewApp() {
   const [phase, setPhase] = useState<"onboarding" | "interview">("onboarding");
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState<Level>("mid");
+  const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("ticketing");
   const [resumeName, setResumeName] = useState("");
   const [resumeSummary, setResumeSummary] = useState("");
@@ -89,6 +96,7 @@ export function InterviewApp() {
   const [showDebrief, setShowDebrief] = useState(false);
   const [showCoach, setShowCoach] = useState(true);
   const [mobilePanel, setMobilePanel] = useState<"discussion" | "canvas">("discussion");
+  const [frameworkStepIndex, setFrameworkStepIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageId = useRef(1);
 
@@ -96,6 +104,7 @@ export function InterviewApp() {
     () => scenarios.find((candidate) => candidate.id === scenarioId) ?? scenarios[0],
     [scenarioId],
   );
+  const frameworkStage = deliveryFramework[frameworkStepIndex];
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -112,12 +121,15 @@ export function InterviewApp() {
   }, []);
 
   const beginInterview = () => {
+    setFrameworkStepIndex(0);
     setPhase("interview");
     setMessages([
       {
         id: messageId.current++,
         role: "architect",
-        text: `Welcome. Today I’d like you to ${scenario.name.toLowerCase()}.\n\nI’m intentionally leaving the brief broad. You own the room: ask questions, establish scope, make estimates where they matter, and evolve your design on the canvas. I’ll answer as the product and challenge you as the reviewing architect. Where would you like to begin?`,
+        text: sessionMode === "guided"
+          ? `Welcome to a guided learning session. Today you’ll ${scenario.name.toLowerCase()}.\n\nFollow the six-stage delivery framework shown below. I’ll keep you moving, explain what each stage is for, and nudge you toward useful questions without handing you a model answer.\n\nStart with requirements: ask me about the two or three core user journeys, then identify the measurable system qualities that will shape your design.`
+          : `Welcome. Today I’d like you to ${scenario.name.toLowerCase()}.\n\nI’m intentionally leaving the brief broad. You own the room: ask questions, establish scope, make estimates where they matter, and evolve your design on the canvas. I’ll answer as the product and challenge you as the reviewing architect. Where would you like to begin?`,
       },
     ]);
     startTimer();
@@ -145,9 +157,27 @@ export function InterviewApp() {
       covered,
       turn: messages.filter((message) => message.role === "candidate").length,
     });
+    const replyText = sessionMode === "guided"
+      ? `${reply.text}\n\n${getGuidedFollowUp(frameworkStage)}`
+      : reply.text;
     setCovered((current) => Array.from(new Set([...current, ...reply.topics])));
     setInput("");
-    window.setTimeout(() => addMessage("architect", reply.text), 350);
+    window.setTimeout(() => addMessage("architect", replyText), 350);
+  };
+
+  const advanceFramework = () => {
+    const nextStage = deliveryFramework[frameworkStepIndex + 1];
+    if (!nextStage) {
+      addMessage("architect", "You’ve completed the delivery path. Use the remaining time to revisit the weakest assumption in your design and invite one final probe.");
+      return;
+    }
+
+    setFrameworkStepIndex((current) => current + 1);
+    addMessage("system", `Guide · ${nextStage.label}`);
+    window.setTimeout(
+      () => addMessage("architect", `Next stage: ${nextStage.label}. ${getGuidedNudge(nextStage, scenario)}`),
+      200,
+    );
   };
 
   const askForReview = () => {
@@ -181,9 +211,14 @@ export function InterviewApp() {
     setMessages([]);
     setCovered([]);
     setSignals(initialSignals);
+    setFrameworkStepIndex(0);
     setSeconds(0);
     setShowDebrief(false);
   };
+
+  const activeNudge = sessionMode === "guided"
+    ? getGuidedNudge(frameworkStage, scenario)
+    : getNudge(covered);
 
   if (phase === "onboarding") {
     return (
@@ -211,9 +246,9 @@ export function InterviewApp() {
           <div className="setup-card" aria-label="Interview setup">
             <div className="setup-progress">
               <span>Interview setup</span>
-              <span>Step {step} of 2</span>
+              <span>Step {step} of 3</span>
             </div>
-            <div className="progress-track"><span style={{ width: `${step * 50}%` }} /></div>
+            <div className="progress-track"><span style={{ width: `${(step / 3) * 100}%` }} /></div>
 
             {step === 1 ? (
               <div className="setup-content">
@@ -238,9 +273,53 @@ export function InterviewApp() {
                   Continue <ArrowRight size={18} />
                 </button>
               </div>
-            ) : (
+            ) : step === 2 ? (
               <div className="setup-content">
                 <button className="back-button" onClick={() => setStep(1)} type="button"><ChevronLeft size={16} /> Back</button>
+                <span className="step-kicker">Choose the experience</span>
+                <h2>How do you want to practice?</h2>
+                <p>Use a realistic mock when you’re ready to perform, or follow a coached framework while you learn.</p>
+
+                <div className="mode-list">
+                  <button
+                    className={`mode-option ${sessionMode === "mock" ? "selected" : ""}`}
+                    onClick={() => setSessionMode("mock")}
+                    type="button"
+                  >
+                    <span className="mode-icon"><Mic size={20} /></span>
+                    <span><strong>Mock interview</strong><small>Minimal guidance. You lead and the architect probes your choices.</small></span>
+                    <span className="mode-check">{sessionMode === "mock" && <Check size={14} />}</span>
+                  </button>
+                  <button
+                    className={`mode-option ${sessionMode === "guided" ? "selected" : ""}`}
+                    onClick={() => setSessionMode("guided")}
+                    type="button"
+                  >
+                    <span className="mode-icon guided"><BookOpen size={20} /></span>
+                    <span><strong>Guided learning</strong><small>Follow a six-stage delivery framework with timing cues and question starters.</small></span>
+                    <span className="mode-check">{sessionMode === "guided" && <Check size={14} />}</span>
+                  </button>
+                </div>
+
+                {sessionMode === "guided" && (
+                  <div className="framework-preview">
+                    <div><BookOpen size={15} /><strong>Delivery path</strong><span>about 40 minutes</span></div>
+                    <ol>
+                      {deliveryFramework.map((stage) => <li key={stage.id}>{stage.shortLabel}</li>)}
+                    </ol>
+                    <a href="https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery" target="_blank" rel="noreferrer">
+                      Based on Hello Interview’s Delivery Framework <ExternalLink size={11} />
+                    </a>
+                  </div>
+                )}
+
+                <button className="primary-action" onClick={() => setStep(3)} type="button">
+                  Continue <ArrowRight size={18} />
+                </button>
+              </div>
+            ) : (
+              <div className="setup-content">
+                <button className="back-button" onClick={() => setStep(2)} type="button"><ChevronLeft size={16} /> Back</button>
                 <span className="step-kicker">Personalize the round</span>
                 <h2>Add context, then pick a problem.</h2>
                 <p>Your resume helps frame follow-ups around your background. It never leaves this browser session.</p>
@@ -299,7 +378,7 @@ export function InterviewApp() {
         <Brand compact />
         <div className="session-title">
           <span className="live-dot" />
-          <div><strong>{scenario.shortName}</strong><small>{levelOptions.find((item) => item.id === level)?.label} round</small></div>
+          <div><strong>{scenario.shortName}</strong><small>{sessionMode === "guided" ? "Guided learning" : `${levelOptions.find((item) => item.id === level)?.label} round`}</small></div>
         </div>
         <div className="header-actions">
           <button className="timer-button" onClick={togglePause} type="button" aria-label={isPaused ? "Resume timer" : "Pause timer"}>
@@ -322,14 +401,29 @@ export function InterviewApp() {
             <span className="listening"><Mic size={13} /> listening</span>
           </div>
 
-          <div className="coverage-strip" aria-label="Interview coverage">
-            {(Object.keys(topicLabels) as Topic[]).map((topic) => (
-              <span className={covered.includes(topic) ? "covered" : ""} key={topic} title={topicLabels[topic]}>
-                {covered.includes(topic) ? <Check size={11} /> : null}
-              </span>
-            ))}
-            <small>{covered.length}/7 areas explored</small>
-          </div>
+          {sessionMode === "guided" ? (
+            <div className="guided-strip" aria-label="Guided framework progress">
+              {deliveryFramework.map((stage, index) => (
+                <span
+                  className={index < frameworkStepIndex ? "done" : index === frameworkStepIndex ? "current" : ""}
+                  key={stage.id}
+                  title={`${stage.label} · ${stage.duration}`}
+                >
+                  {index < frameworkStepIndex ? <Check size={10} /> : index + 1}
+                </span>
+              ))}
+              <small>{frameworkStepIndex + 1}/6 · {frameworkStage.shortLabel}</small>
+            </div>
+          ) : (
+            <div className="coverage-strip" aria-label="Interview coverage">
+              {(Object.keys(topicLabels) as Topic[]).map((topic) => (
+                <span className={covered.includes(topic) ? "covered" : ""} key={topic} title={topicLabels[topic]}>
+                  {covered.includes(topic) ? <Check size={11} /> : null}
+                </span>
+              ))}
+              <small>{covered.length}/7 areas explored</small>
+            </div>
+          )}
 
           <div className="message-list" aria-live="polite">
             {messages.map((message) => (
@@ -340,11 +434,37 @@ export function InterviewApp() {
             ))}
           </div>
 
-          <div className={`coach-note ${showCoach ? "" : "hidden"}`}>
-            <Lightbulb size={16} />
-            <p><strong>Room note</strong>{getNudge(covered)}</p>
-            <button onClick={() => setShowCoach(false)} aria-label="Dismiss coaching note" type="button"><X size={14} /></button>
-          </div>
+          {sessionMode === "guided" ? (
+            <div className="guided-coach">
+              <div className="guided-coach-heading">
+                <BookOpen size={15} />
+                <span>Step {frameworkStepIndex + 1}</span>
+                <strong>{frameworkStage.label}</strong>
+                <small>{frameworkStage.duration}</small>
+              </div>
+              <p>{frameworkStage.goal}</p>
+              <div className="question-starters" aria-label="Suggested questions">
+                {frameworkStage.questions.map((question) => (
+                  <button key={question} onClick={() => setInput(question)} type="button">{question}</button>
+                ))}
+              </div>
+              <div className="guided-coach-footer">
+                <a href="https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery" target="_blank" rel="noreferrer">
+                  Framework guide <ExternalLink size={10} />
+                </a>
+                <button onClick={advanceFramework} type="button" disabled={frameworkStepIndex === deliveryFramework.length - 1}>
+                  {frameworkStepIndex === deliveryFramework.length - 1 ? "Final stage" : `Next · ${deliveryFramework[frameworkStepIndex + 1].shortLabel}`}
+                  {frameworkStepIndex < deliveryFramework.length - 1 && <ArrowRight size={12} />}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={`coach-note ${showCoach ? "" : "hidden"}`}>
+              <Lightbulb size={16} />
+              <p><strong>Room note</strong>{getNudge(covered)}</p>
+              <button onClick={() => setShowCoach(false)} aria-label="Dismiss coaching note" type="button"><X size={14} /></button>
+            </div>
+          )}
 
           <form className="composer" onSubmit={submitMessage}>
             <textarea
@@ -375,7 +495,7 @@ export function InterviewApp() {
               <span className="autosave"><span /> Session-local autosave</span>
             </div>
             <div className="canvas-actions">
-              <button onClick={() => addMessage("architect", getNudge(covered))} type="button"><CircleHelp size={15} /> Nudge me</button>
+              <button onClick={() => addMessage("architect", activeNudge)} type="button"><CircleHelp size={15} /> Nudge me</button>
               <button className="review-button" onClick={askForReview} type="button"><Sparkles size={15} /> Review my canvas</button>
             </div>
           </div>
@@ -398,7 +518,12 @@ export function InterviewApp() {
             <h2 id="debrief-title">A promising design with room to sharpen the argument.</h2>
             <div className="score-row">
               <div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as React.CSSProperties}><span>{score}</span><small>/100</small></div>
-              <p>You explored <strong>{covered.length} of 7</strong> design dimensions and drew <strong>{signals.shapes} components</strong> with <strong>{signals.connections} connections</strong>. This is directional feedback, not a model answer.</p>
+              <p>
+                {sessionMode === "guided"
+                  ? <>You reached <strong>{frameworkStage.label}</strong> in the delivery framework and drew <strong>{signals.shapes} components</strong> with <strong>{signals.connections} connections</strong>.</>
+                  : <>You explored <strong>{covered.length} of 7</strong> design dimensions and drew <strong>{signals.shapes} components</strong> with <strong>{signals.connections} connections</strong>.</>
+                } This is directional feedback, not a model answer.
+              </p>
             </div>
             <div className="debrief-grid">
               <div><Check size={17} /><span><strong>Keep doing</strong>{covered.length >= 3 ? "You moved across multiple design dimensions instead of fixating on technology." : "You made room for clarification before locking the architecture."}</span></div>
