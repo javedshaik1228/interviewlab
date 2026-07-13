@@ -40,7 +40,7 @@ export const providerOptions: Array<{
 }> = [
   {
     id: "builtin",
-    label: "InterviewRoom built-in",
+    label: "InterviewLab built-in",
     shortLabel: "Built-in",
     description: "Private, instant, and key-free. Uses the local interview rubric.",
   },

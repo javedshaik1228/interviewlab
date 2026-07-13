@@ -1,6 +1,6 @@
-# InterviewRoom
+# InterviewLab
 
-InterviewRoom is a discussion-first technical interview studio. Candidates
+InterviewLab is a discussion-first technical interview practice studio. Candidates
 choose their target level and practice either system design or NeetCode 150
 coding rounds while an adaptive interviewer challenges their reasoning.
 

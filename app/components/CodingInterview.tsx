@@ -135,7 +135,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
       <header className="interview-header">
         <div className="brand compact">
           <span className="brand-mark"><span /><span /><span /></span>
-          <span><strong>InterviewRoom</strong></span>
+          <span><strong>InterviewLab</strong></span>
         </div>
         <div className="session-title coding-session-title">
           <span className="live-dot" />
@@ -157,7 +157,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
               <span>Pattern hidden during interview</span>
             </div>
             <h1>{problem.title}</h1>
-            <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving InterviewRoom.</p>
+            <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving InterviewLab.</p>
             <a href={problem.sourceUrl} target="_blank" rel="noreferrer">Open directly if the embed is unavailable <ExternalLink size={12} /></a>
           </div>
 
@@ -249,7 +249,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           />
           {workspaceTab === "problem" ? (
             <footer className="code-footer problem-footer">
-              <span><BookOpen size={13} /> Official content stays on NeetCode and is displayed inside InterviewRoom.</span>
+              <span><BookOpen size={13} /> Official content stays on NeetCode and is displayed inside InterviewLab.</span>
               <button onClick={() => setWorkspaceTab("code")} type="button">Start coding <ArrowRight size={14} /></button>
             </footer>
           ) : (

@@ -67,7 +67,7 @@ export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals)
       <Excalidraw
         onChange={(elements) => handleChange(elements as readonly DiagramElement[])}
         theme="light"
-        name="InterviewRoom system design"
+        name="InterviewLab system design"
         UIOptions={{
           canvasActions: {
             changeViewBackgroundColor: false,

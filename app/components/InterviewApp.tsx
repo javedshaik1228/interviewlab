@@ -738,7 +738,7 @@ function ProviderPicker({
               value={model}
             />
           </label>
-          <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewRoom to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
+          <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewLab to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
         </div>
       ) : (
         <div className="provider-built-in-note"><ShieldCheck size={13} /> No account, key, or network request required.</div>
@@ -751,7 +751,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`brand ${compact ? "compact" : ""}`}>
       <span className="brand-mark"><span /><span /><span /></span>
-      <span><strong>InterviewRoom</strong>{!compact && <small>Technical interview studio</small>}</span>
+      <span><strong>InterviewLab</strong>{!compact && <small>Technical interview practice studio</small>}</span>
     </div>
   );
 }

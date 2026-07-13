@@ -14,13 +14,15 @@ async function render() {
   );
 }
 
-test("server-renders the InterviewRoom onboarding experience", async () => {
+test("server-renders the InterviewLab onboarding experience", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>InterviewRoom — System design and coding practice<\/title>/i);
+  assert.match(html, /<title>InterviewLab — System design and coding practice<\/title>/i);
+  assert.match(html, /og-interviewlab\.png/i);
+  assert.doesNotMatch(html, /InterviewRoom/i);
   assert.match(html, /Think out loud/);
   assert.match(html, /Junior/);
   assert.match(html, /Senior architect/);
@@ -102,7 +104,7 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(codingRoom, /workspaceTab.*problem/);
   assert.match(codingRoom, /<iframe/);
   assert.match(codingRoom, /src=\{problem\.sourceUrl\}/);
-  assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside InterviewRoom/);
+  assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside InterviewLab/);
   assert.match(engine, /brute-force approach is a valid baseline/);
   assert.match(engine, /buildCodingNotes/);
   const liveInterviewEngine = engine.split("export function buildCodingNotes")[0];
