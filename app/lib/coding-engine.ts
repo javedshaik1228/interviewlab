@@ -8,6 +8,7 @@ export type CodingMessage = {
 
 export type CodingNotes = {
   summary: string;
+  reference: string[];
   approaches: string[];
   strengths: string[];
   pitfalls: string[];
@@ -41,26 +42,36 @@ const techniqueMatchers: { label: string; matcher: RegExp }[] = [
   { label: "bit manipulation", matcher: /\bxor\b|bit|mask|shift/i },
 ];
 
+const reasoningNudges = [
+  "Start from the work your current approach repeats. What information would let you avoid doing that work again?",
+  "List the properties guaranteed by the input. Which one could support a stronger invariant or a tighter bound?",
+  "Compare a time-for-space trade-off, preprocessing once, and discarding work safely. Which direction can you justify?",
+];
+
 function unique(items: string[]) {
   return Array.from(new Set(items));
 }
 
-export function createCodingReply(input: string, problem: CodingProblem, turn: number): string {
+export function createCodingNudge(nudgeIndex: number): string {
+  return `Reasoning nudge: ${reasoningNudges[nudgeIndex % reasoningNudges.length]} Derive the next step from your own observations before naming a technique.`;
+}
+
+export function createCodingReply(input: string, turn: number): string {
   const hasBruteForce = bruteForce.test(input);
   const mentionsComplexity = complexity.test(input);
   const mentionsEdges = edgeCases.test(input);
   const asksForHelp = stuck.test(input);
 
   if (hasBruteForce) {
-    return `That brute-force approach is a valid baseline; I accept it as a correct starting point. ${mentionsComplexity ? "You have named its cost." : "First, state its time and space complexity."}\n\nNow optimize it: can you ${problem.optimizationHint}? The target is ${problem.targetComplexity}. Talk me through the invariant before rewriting the code.`;
+    return `That brute-force approach is a valid baseline; I accept it as a correct starting point. ${mentionsComplexity ? "You have named its cost." : "First, state its time and space complexity."}\n\nNow improve it without jumping to a named technique. Identify the repeated work or unused input structure, then derive and defend your next invariant.`;
   }
 
   if (asksForHelp) {
-    return `Small nudge: ${problem.optimizationHint}. Do not jump to code yet—name the repeated work or state you can avoid, then tell me the invariant your optimized approach maintains.`;
+    return createCodingNudge(turn);
   }
 
   if (!mentionsComplexity) {
-    return `I can follow the approach. Before I judge whether it is optimal, state the time and auxiliary-space complexity in terms of the input. Then compare that with the target: ${problem.targetComplexity}.`;
+    return "I can follow the approach. Before I judge whether it is optimal, state the time and auxiliary-space complexity in terms of the input. Then argue whether a tighter bound is possible from the constraints.";
   }
 
   if (!mentionsEdges) {
@@ -75,7 +86,7 @@ export function createCodingReply(input: string, problem: CodingProblem, turn: n
   return followUps[turn % followUps.length];
 }
 
-export function buildCodingNotes(problem: CodingProblem, messages: CodingMessage[], code: string, hintsUsed: number): CodingNotes {
+export function buildCodingNotes(problem: CodingProblem, messages: CodingMessage[], code: string, nudgesUsed: number): CodingNotes {
   const candidateInputs = messages.filter((message) => message.role === "candidate").map((message) => message.text.trim()).filter(Boolean);
   const discussion = candidateInputs.join(" ");
   const combined = `${discussion}\n${code}`;
@@ -103,7 +114,7 @@ export function buildCodingNotes(problem: CodingProblem, messages: CodingMessage
   ]);
 
   const challenges = unique([
-    ...(stuck.test(discussion) || hintsUsed > 0 ? [`Needed ${Math.max(hintsUsed, 1)} optimization nudge${Math.max(hintsUsed, 1) === 1 ? "" : "s"}.`] : []),
+    ...(stuck.test(discussion) || nudgesUsed > 0 ? [`Needed ${Math.max(nudgesUsed, 1)} reasoning nudge${Math.max(nudgesUsed, 1) === 1 ? "" : "s"}.`] : []),
     ...(bugs.test(combined) ? ["Encountered or anticipated an implementation/correctness issue."] : []),
     ...(revision.test(discussion) ? ["Changed direction while refining the approach."] : []),
     ...(!candidateInputs.length ? ["Submitted without explaining the reasoning in the discussion."] : []),
@@ -113,6 +124,7 @@ export function buildCodingNotes(problem: CodingProblem, messages: CodingMessage
     summary: bruteForce.test(combined)
       ? `A valid baseline was accepted for ${problem.title}; the main next step is reaching and defending ${problem.targetComplexity}.`
       : `The attempt was evaluated on correctness reasoning, complexity, edge cases, and progress toward ${problem.targetComplexity}.`,
+    reference: [`Reference pattern: ${problem.category}`, `Typical target complexity: ${problem.targetComplexity}`],
     approaches: approaches.length ? approaches : ["No specific algorithmic approach was captured in the discussion."],
     strengths: strengths.length ? strengths : ["A solution draft was submitted for review."],
     pitfalls: pitfalls.length ? pitfalls : ["No major reasoning pitfall was detected from the captured input."],

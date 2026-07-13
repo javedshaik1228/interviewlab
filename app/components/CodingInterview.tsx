@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import type { Level } from "../lib/interview-engine";
-import { buildCodingNotes, CodingMessage, createCodingReply } from "../lib/coding-engine";
+import { buildCodingNotes, CodingMessage, createCodingNudge, createCodingReply } from "../lib/coding-engine";
 import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
 
 type Props = {
@@ -44,20 +44,20 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
     {
       id: 1,
       role: "interviewer",
-      text: `Your coding challenge is “${problem.title}.” Open the full prompt, clarify anything ambiguous, and talk through a correct baseline before you code.\n\nA brute-force solution is acceptable. I will still ask you to identify its complexity and work toward the optimal pattern.`,
+      text: `Your coding challenge is “${problem.title}.” Open the full prompt, clarify anything ambiguous, and talk through a correct baseline before you code.\n\nA brute-force solution is acceptable. I will still ask you to identify its complexity and work toward a more efficient solution.`,
     },
   ]);
   const [input, setInput] = useState("");
   const [code, setCode] = useState(`${commentPrefix} ${language} draft for ${problem.title}\n${commentPrefix} Talk through your invariant and complexity as you work.\n\n`);
-  const [hintsUsed, setHintsUsed] = useState(0);
+  const [nudgesUsed, setNudgesUsed] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<"problem" | "code">("problem");
   const [problemLoaded, setProblemLoaded] = useState(false);
   const messageId = useRef(2);
 
   const notes = useMemo(
-    () => buildCodingNotes(problem, messages, code, hintsUsed),
-    [problem, messages, code, hintsUsed],
+    () => buildCodingNotes(problem, messages, code, nudgesUsed),
+    [problem, messages, code, nudgesUsed],
   );
 
   const submitMessage = (event?: FormEvent) => {
@@ -66,24 +66,24 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
     if (!value) return;
     const turn = messages.filter((message) => message.role === "candidate").length;
     const asksForNudge = /hint|stuck|help|brute|not sure|don.?t know/i.test(value);
-    if (asksForNudge) setHintsUsed((current) => current + 1);
+    if (asksForNudge) setNudgesUsed((current) => current + 1);
     setMessages((current) => [...current, { id: messageId.current++, role: "candidate", text: value }]);
     setInput("");
     window.setTimeout(() => {
       setMessages((current) => [...current, {
         id: messageId.current++,
         role: "interviewer",
-        text: createCodingReply(value, problem, turn),
+        text: createCodingReply(value, turn),
       }]);
     }, 300);
   };
 
   const requestNudge = () => {
-    setHintsUsed((current) => current + 1);
+    setNudgesUsed((current) => current + 1);
     setMessages((current) => [...current, {
       id: messageId.current++,
       role: "interviewer",
-      text: `Optimization nudge: ${problem.optimizationHint}. First identify the repeated work, then state the invariant that removes it.`,
+      text: createCodingNudge(nudgesUsed),
     }]);
   };
 
@@ -101,7 +101,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
         </div>
         <div className="session-title coding-session-title">
           <span className="live-dot" />
-          <div><strong>{problem.title}</strong><small>NeetCode 150 · {problem.category}</small></div>
+          <div><strong>{problem.title}</strong><small>NeetCode 150 · Coding interview</small></div>
         </div>
         <div className="header-actions">
           <button className="timer-button" onClick={onTogglePause} type="button" aria-label={isPaused ? "Resume timer" : "Pause timer"}>
@@ -116,7 +116,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           <div className="coding-problem-card">
             <div>
               <span className={`difficulty-pill ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span>
-              <span>{problem.category}</span>
+              <span>Pattern hidden during interview</span>
             </div>
             <h1>{problem.title}</h1>
             <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving ArchRoom.</p>
@@ -133,8 +133,8 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           </div>
 
           <div className="coding-nudge-row">
-            <button onClick={requestNudge} type="button"><Lightbulb size={14} /> Optimization nudge</button>
-            <span>{hintsUsed} nudges used</span>
+            <button onClick={requestNudge} type="button"><Lightbulb size={14} /> Reasoning nudge</button>
+            <span>{nudgesUsed} nudges used</span>
           </div>
 
           <form className="composer coding-composer" onSubmit={submitMessage}>
@@ -182,14 +182,14 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
                 <Code2 size={15} /> Code <span>{language}</span>
               </button>
             </div>
-            <div className="complexity-target"><Target size={14} /><span>Target: {problem.targetComplexity}</span></div>
+            <div className="interview-rule"><Sparkles size={14} /><span>Derive the best bound</span></div>
           </div>
           <div className="embedded-problem" hidden={workspaceTab !== "problem"} id="problem-workspace" role="tabpanel">
             {!problemLoaded && (
               <div className="problem-frame-loading" aria-live="polite">
                 <span className="canvas-loading-mark">AR</span>
                 <strong>Loading the official problem…</strong>
-                <small>The question, examples, constraints, hints, and solutions are served by NeetCode.</small>
+                <small>The question, examples, and constraints are served by NeetCode.</small>
               </div>
             )}
             <iframe
@@ -232,6 +232,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
             <p className="notes-summary">{notes.summary}</p>
 
             <div className="notes-grid">
+              <NotesSection icon={<BookOpen size={16} />} title="Reference after submission" items={notes.reference} />
               <NotesSection icon={<Target size={16} />} title="Approaches captured" items={notes.approaches} />
               <NotesSection icon={<CheckCircle2 size={16} />} title="What worked" items={notes.strengths} />
               <NotesSection icon={<FileWarning size={16} />} title="Pitfalls" items={notes.pitfalls} warning />

@@ -104,6 +104,12 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside ArchRoom/);
   assert.match(engine, /brute-force approach is a valid baseline/);
   assert.match(engine, /buildCodingNotes/);
+  const liveInterviewEngine = engine.split("export function buildCodingNotes")[0];
+  assert.doesNotMatch(codingRoom, /problem\.(?:category|optimizationHint|targetComplexity)/);
+  assert.doesNotMatch(liveInterviewEngine, /problem\.(?:category|optimizationHint|targetComplexity)/);
+  assert.match(codingRoom, /Pattern hidden during interview/);
+  assert.match(codingRoom, /Reference after submission/);
+  assert.match(engine, /Reference pattern/);
   assert.match(css, /\.coding-workspace/);
   assert.match(css, /\.embedded-problem/);
   assert.match(css, /\.code-workspace-tabs/);

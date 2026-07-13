@@ -553,7 +553,7 @@ textarea:focus-visible {
 .code-workspace-tabs button:hover { color: #fff; }
 .code-workspace-tabs button.active { border-bottom-color: var(--coral); color: #fff; }
 .code-workspace-tabs button span { color: #77817d; }
-.complexity-target { background: #202825; border-radius: 7px; color: #b6c8bf; padding: 7px 9px; }
+.interview-rule { background: #202825; border-radius: 7px; color: #b6c8bf; padding: 7px 9px; }
 .embedded-problem { background: #fff; flex: 1; min-height: 0; position: relative; }
 .embedded-problem iframe { background: #fff; border: 0; display: block; height: 100%; position: relative; width: 100%; z-index: 1; }
 .problem-frame-loading { align-items: center; background: #f8f7f2; color: var(--muted); display: flex; flex-direction: column; gap: 9px; inset: 0; justify-content: center; padding: 30px; position: absolute; text-align: center; z-index: 2; }
@@ -664,7 +664,7 @@ textarea:focus-visible {
   .coding-workspace { display: flex; flex-direction: column; height: auto; }
   .coding-discussion { border-right: 0; height: 650px; }
   .code-panel { min-height: 620px; }
-  .complexity-target { display: none !important; }
+  .interview-rule { display: none !important; }
   .embedded-problem { min-height: 510px; }
   .notes-grid { grid-template-columns: 1fr; }
   .coding-notes-modal { padding: 28px 22px; }

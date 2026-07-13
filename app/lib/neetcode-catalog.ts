@@ -8,7 +8,6 @@ export type CodingProblem = {
   category: string;
   difficulty: CodingDifficulty;
   sourceUrl: string;
-  optimizationHint: string;
   targetComplexity: string;
 };
 
@@ -109,37 +108,35 @@ const groups: ProblemGroup[] = [
   ]],
 ];
 
-const categoryGuidance: Record<string, { hint: string; complexity: string }> = {
-  "Arrays & Hashing": { hint: "replace repeated scans with a hash set/map, counting structure, bucket, or prefix state", complexity: "usually O(n) time" },
-  "Two Pointers": { hint: "use ordering or a maintained invariant to move two pointers instead of testing every pair", complexity: "usually O(n), or O(n²) for 3Sum-style problems" },
-  "Sliding Window": { hint: "maintain only the state that enters and leaves a moving window", complexity: "usually O(n) time" },
-  Stack: { hint: "use a stack—often monotonic—to preserve only unresolved candidates", complexity: "usually O(n) time" },
-  "Binary Search": { hint: "identify the monotonic predicate and search the value or index space", complexity: "usually O(log n) or O(n log range)" },
-  "Linked List": { hint: "use pointer invariants, a dummy node, fast/slow pointers, or a heap when merging k lists", complexity: "usually O(n), with O(1) extra pointer space" },
-  Trees: { hint: "define what each DFS or BFS call returns and avoid recomputing subtrees", complexity: "usually O(n) time" },
-  "Heap / Priority Queue": { hint: "retain only the best k candidates or split the stream across two heaps", complexity: "usually O(n log k)" },
-  Backtracking: { hint: "build one decision tree, prune invalid branches early, and undo state cleanly", complexity: "exponential output-sensitive time with pruning" },
-  Tries: { hint: "share prefixes in a trie and prune searches as soon as a prefix is impossible", complexity: "usually O(total characters) to build and O(word length) per lookup" },
-  Graphs: { hint: "model vertices and edges explicitly, then choose DFS, BFS, topological sort, or union-find", complexity: "usually O(V + E)" },
-  "Advanced Graphs": { hint: "choose the graph invariant: shortest path, minimum spanning tree, topological order, or Eulerian path", complexity: "commonly O(E log V)" },
-  "1-D Dynamic Programming": { hint: "define a minimal state, recurrence, base cases, and then compress previous states", complexity: "usually O(n) or O(n²), depending on the state transition" },
-  "2-D Dynamic Programming": { hint: "name both state dimensions and prove the transition before optimizing storage", complexity: "usually O(mn) or another state-space bound" },
-  Greedy: { hint: "state the local choice and prove why it never blocks an optimal completion", complexity: "usually O(n), or O(n log n) when sorting is required" },
-  Intervals: { hint: "sort by the boundary that makes overlap decisions irreversible, then scan once", complexity: "usually O(n log n)" },
-  "Math & Geometry": { hint: "derive the transformation or invariant and simulate only the necessary cells or digits", complexity: "usually linear in the represented input size" },
-  "Bit Manipulation": { hint: "look for XOR, masks, shifts, or fixed-width overflow rules", complexity: "usually O(n) or O(word size)" },
+const categoryComplexity: Record<string, string> = {
+  "Arrays & Hashing": "usually O(n) time",
+  "Two Pointers": "usually O(n), or O(n²) for 3Sum-style problems",
+  "Sliding Window": "usually O(n) time",
+  Stack: "usually O(n) time",
+  "Binary Search": "usually O(log n) or O(n log range)",
+  "Linked List": "usually O(n), with O(1) extra pointer space",
+  Trees: "usually O(n) time",
+  "Heap / Priority Queue": "usually O(n log k)",
+  Backtracking: "exponential output-sensitive time with pruning",
+  Tries: "usually O(total characters) to build and O(word length) per lookup",
+  Graphs: "usually O(V + E)",
+  "Advanced Graphs": "commonly O(E log V)",
+  "1-D Dynamic Programming": "usually O(n) or O(n²), depending on the state transition",
+  "2-D Dynamic Programming": "usually O(mn) or another state-space bound",
+  Greedy: "usually O(n), or O(n log n) when sorting is required",
+  Intervals: "usually O(n log n)",
+  "Math & Geometry": "usually linear in the represented input size",
+  "Bit Manipulation": "usually O(n) or O(word size)",
 };
 
 export const neetcodeProblems: CodingProblem[] = groups.flatMap(([category, problems]) => {
-  const guidance = categoryGuidance[category];
   return problems.map(([title, difficulty, slug]) => ({
     id: slug,
     title,
     category,
     difficulty,
     sourceUrl: `https://neetcode.io/problems/${slug}/question?list=neetcode150`,
-    optimizationHint: guidance.hint,
-    targetComplexity: guidance.complexity,
+    targetComplexity: categoryComplexity[category],
   }));
 });
 
