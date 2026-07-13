@@ -16,6 +16,7 @@ import {
   Mic,
   Paperclip,
   RotateCcw,
+  Search,
   Send,
   ShieldCheck,
   Sparkles,
@@ -32,11 +33,12 @@ import {
   getNudge,
   Level,
   ScenarioId,
-  scenarios,
   SessionMode,
   Topic,
   topicLabels,
 } from "../lib/interview-engine";
+import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/question-catalog";
+import { assessDesign } from "../lib/design-assessment";
 
 type Message = {
   id: number;
@@ -84,7 +86,8 @@ export function InterviewApp() {
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState<Level>("mid");
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
-  const [scenarioId, setScenarioId] = useState<ScenarioId>("ticketing");
+  const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
+  const [scenarioQuery, setScenarioQuery] = useState("");
   const [resumeName, setResumeName] = useState("");
   const [resumeSummary, setResumeSummary] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -105,6 +108,16 @@ export function InterviewApp() {
     [scenarioId],
   );
   const frameworkStage = deliveryFramework[frameworkStepIndex];
+  const candidateText = useMemo(
+    () => messages.filter((message) => message.role === "candidate").map((message) => message.text).join(" "),
+    [messages],
+  );
+  const assessment = useMemo(() => assessDesign(candidateText, signals), [candidateText, signals]);
+  const filteredScenarios = useMemo(() => {
+    const query = scenarioQuery.trim().toLowerCase();
+    if (!query) return scenarios;
+    return scenarios.filter((item) => `${item.shortName} ${item.name} ${item.brief} ${item.accent}`.toLowerCase().includes(query));
+  }, [scenarioQuery]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -121,6 +134,8 @@ export function InterviewApp() {
   }, []);
 
   const beginInterview = () => {
+    const selectedScenario = sessionMode === "mock" ? pickRandomScenario() : scenario;
+    setScenarioId(selectedScenario.id);
     setFrameworkStepIndex(0);
     setPhase("interview");
     setMessages([
@@ -128,8 +143,8 @@ export function InterviewApp() {
         id: messageId.current++,
         role: "architect",
         text: sessionMode === "guided"
-          ? `Welcome to a guided learning session. Today you’ll ${scenario.name.toLowerCase()}.\n\nFollow the six-stage delivery framework shown below. I’ll keep you moving, explain what each stage is for, and nudge you toward useful questions without handing you a model answer.\n\nStart with requirements: ask me about the two or three core user journeys, then identify the measurable system qualities that will shape your design.`
-          : `Welcome. Today I’d like you to ${scenario.name.toLowerCase()}.\n\nI’m intentionally leaving the brief broad. You own the room: ask questions, establish scope, make estimates where they matter, and evolve your design on the canvas. I’ll answer as the product and challenge you as the reviewing architect. Where would you like to begin?`,
+          ? `Welcome to a guided learning session. Today you’ll ${selectedScenario.name.toLowerCase()}.\n\nFollow the six-stage delivery framework shown below. I’ll keep you moving, explain what each stage is for, and nudge you toward useful questions without handing you a model answer.\n\nStart with requirements: ask me about the two or three core user journeys, then identify the measurable system qualities that will shape your design.`
+          : `Your random challenge is: ${selectedScenario.name}.\n\nI’m intentionally leaving the brief broad. You own the room: ask questions, establish scope, make estimates where they matter, and evolve your design on the canvas. There is no reference answer to match; I will assess how clearly you reason about trade-offs. Where would you like to begin?`,
       },
     ]);
     startTimer();
@@ -157,9 +172,10 @@ export function InterviewApp() {
       covered,
       turn: messages.filter((message) => message.role === "candidate").length,
     });
+    const liveAssessment = assessDesign(`${candidateText} ${value}`, signals);
     const replyText = sessionMode === "guided"
       ? `${reply.text}\n\n${getGuidedFollowUp(frameworkStage)}`
-      : reply.text;
+      : `${reply.text}\n\nArchitect probe: ${liveAssessment.nextProbe}`;
     setCovered((current) => Array.from(new Set([...current, ...reply.topics])));
     setInput("");
     window.setTimeout(() => addMessage("architect", replyText), 350);
@@ -188,7 +204,7 @@ export function InterviewApp() {
       signals.stores === 0 ? "and no labeled source of truth yet" : `and ${signals.stores} data or messaging signals`,
     ];
     const prompt = labelPreview
-      ? `I’m reading labels such as ${labelPreview}. Pick the highest-risk arrow and explain its request contract, failure mode, and consistency expectation.`
+      ? `I’m reading labels such as ${labelPreview}. Pick the highest-risk arrow and explain its request contract, failure mode, and consistency expectation. ${assessment.nextProbe}`
       : "Add labels to the major components so we can review responsibilities rather than boxes.";
     addMessage("system", "Canvas review requested");
     window.setTimeout(
@@ -218,7 +234,7 @@ export function InterviewApp() {
 
   const activeNudge = sessionMode === "guided"
     ? getGuidedNudge(frameworkStage, scenario)
-    : getNudge(covered);
+    : assessment.nextProbe || getNudge(covered);
 
   if (phase === "onboarding") {
     return (
@@ -321,7 +337,7 @@ export function InterviewApp() {
               <div className="setup-content">
                 <button className="back-button" onClick={() => setStep(2)} type="button"><ChevronLeft size={16} /> Back</button>
                 <span className="step-kicker">Personalize the round</span>
-                <h2>Add context, then pick a problem.</h2>
+                <h2>{sessionMode === "mock" ? "Add context. We’ll pick the problem." : "Add context, then pick a problem."}</h2>
                 <p>Your resume helps frame follow-ups around your background. It never leaves this browser session.</p>
 
                 <label className={`resume-drop ${resumeName ? "has-file" : ""}`}>
@@ -340,21 +356,32 @@ export function InterviewApp() {
                   />
                 </label>
 
-                <fieldset className="scenario-fieldset">
-                  <legend>Choose today’s prompt</legend>
-                  <div className="scenario-grid">
-                    {scenarios.map((item) => (
-                      <button
-                        className={scenarioId === item.id ? "selected" : ""}
-                        key={item.id}
-                        onClick={() => setScenarioId(item.id)}
-                        type="button"
-                      >
-                        <span>{item.shortName}</span><small>{item.accent}</small>
-                      </button>
-                    ))}
+                {sessionMode === "mock" ? (
+                  <div className="random-prompt-card">
+                    <Sparkles size={19} />
+                    <span><strong>Random challenge from 30 problems</strong><small>The prompt is revealed when you enter the room, so the mock stays realistic.</small></span>
                   </div>
-                </fieldset>
+                ) : (
+                  <fieldset className="scenario-fieldset">
+                    <legend>Choose today’s guided problem <small>{scenarios.length} available</small></legend>
+                    <label className="scenario-search">
+                      <Search size={14} />
+                      <input aria-label="Search design problems" onChange={(event) => setScenarioQuery(event.target.value)} placeholder="Search Bitly, payments, realtime…" value={scenarioQuery} />
+                    </label>
+                    <div className="scenario-grid scenario-catalog">
+                      {filteredScenarios.map((item) => (
+                        <button
+                          className={scenarioId === item.id ? "selected" : ""}
+                          key={item.id}
+                          onClick={() => setScenarioId(item.id)}
+                          type="button"
+                        >
+                          <span>{item.shortName}</span><small>{item.accent}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
 
                 <button className="primary-action" onClick={beginInterview} type="button">
                   Enter the interview room <ArrowRight size={18} />
@@ -369,8 +396,6 @@ export function InterviewApp() {
       </main>
     );
   }
-
-  const score = Math.min(100, 24 + covered.length * 8 + Math.min(signals.shapes, 6) * 3 + Math.min(signals.connections, 5) * 2);
 
   return (
     <main className="interview-page">
@@ -457,11 +482,14 @@ export function InterviewApp() {
                   {frameworkStepIndex < deliveryFramework.length - 1 && <ArrowRight size={12} />}
                 </button>
               </div>
+              <a className="problem-source" href={questionSourceUrl(scenario)} target="_blank" rel="noreferrer">
+                Original problem inspiration <ExternalLink size={10} />
+              </a>
             </div>
           ) : (
             <div className={`coach-note ${showCoach ? "" : "hidden"}`}>
               <Lightbulb size={16} />
-              <p><strong>Room note</strong>{getNudge(covered)}</p>
+              <p><strong>Room note</strong>{assessment.nextProbe}</p>
               <button onClick={() => setShowCoach(false)} aria-label="Dismiss coaching note" type="button"><X size={14} /></button>
             </div>
           )}
@@ -515,19 +543,36 @@ export function InterviewApp() {
           <section className="debrief-modal" role="dialog" aria-modal="true" aria-labelledby="debrief-title">
             <button className="modal-close" onClick={() => setShowDebrief(false)} aria-label="Close debrief" type="button"><X size={19} /></button>
             <span className="debrief-kicker">Session debrief</span>
-            <h2 id="debrief-title">A promising design with room to sharpen the argument.</h2>
+            <h2 id="debrief-title">Your reasoning profile—not a reference-answer match.</h2>
             <div className="score-row">
-              <div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as React.CSSProperties}><span>{score}</span><small>/100</small></div>
+              <div className="score-ring" style={{ "--score": `${assessment.overall * 3.6}deg` } as React.CSSProperties}><span>{assessment.overall}</span><small>/100</small></div>
               <p>
                 {sessionMode === "guided"
                   ? <>You reached <strong>{frameworkStage.label}</strong> in the delivery framework and drew <strong>{signals.shapes} components</strong> with <strong>{signals.connections} connections</strong>.</>
                   : <>You explored <strong>{covered.length} of 7</strong> design dimensions and drew <strong>{signals.shapes} components</strong> with <strong>{signals.connections} connections</strong>.</>
-                } This is directional feedback, not a model answer.
+                } Novel designs are welcome; scores reflect the evidence and trade-offs you explained, not similarity to any published solution.
               </p>
             </div>
+            <div className="quality-score-list" aria-label="Core evaluation patterns">
+              {assessment.qualities.map((quality) => (
+                <div className="quality-score" key={quality.id} title={quality.feedback}>
+                  <span>{quality.label}</span><div><i style={{ width: `${quality.score}%` }} /></div><strong>{quality.score}</strong>
+                </div>
+              ))}
+            </div>
+            <h3>Architectural choices evaluated</h3>
+            <div className="choice-table">
+              {assessment.choices.map((choice) => (
+                <div className="choice-row" key={choice.id}>
+                  <strong>{choice.category}</strong>
+                  <span><b>{choice.focus}</b>{choice.goal}</span>
+                  <small>{choice.evidence}</small>
+                </div>
+              ))}
+            </div>
             <div className="debrief-grid">
-              <div><Check size={17} /><span><strong>Keep doing</strong>{covered.length >= 3 ? "You moved across multiple design dimensions instead of fixating on technology." : "You made room for clarification before locking the architecture."}</span></div>
-              <div><Lightbulb size={17} /><span><strong>Next rep</strong>{signals.connections < 3 ? "Narrate the critical path and label every important boundary." : "Push harder on partial failures and overloaded dependencies."}</span></div>
+              <div><Check size={17} /><span><strong>Evidence seen</strong>{assessment.choices.filter((choice) => choice.evidence !== "Not discussed yet").length} of 3 architectural-choice categories were discussed.</span></div>
+              <div><Lightbulb size={17} /><span><strong>Next probe</strong>{assessment.nextProbe}</span></div>
             </div>
             <div className="modal-actions">
               <button onClick={resetInterview} type="button"><RotateCcw size={16} /> New interview</button>

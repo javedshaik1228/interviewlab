@@ -58,3 +58,27 @@ test("includes the guided delivery framework learning mode", async () => {
   assert.match(css, /\.guided-coach/);
   assert.match(css, /\.guided-strip/);
 });
+
+test("offers the full guided catalog and rubric-based mock evaluation", async () => {
+  const [app, catalog, assessment, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/question-catalog.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/design-assessment.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal((catalog.match(/sourceSlug:/g) ?? []).length, 30);
+  assert.match(catalog, /pickRandomScenario/);
+  assert.match(app, /Random challenge from 30 problems/);
+  assert.match(app, /scenario-catalog/);
+  assert.match(assessment, /Scalability/);
+  assert.match(assessment, /Reliability & availability/);
+  assert.match(assessment, /Performance & latency/);
+  assert.match(assessment, /Maintainability & simplicity/);
+  assert.match(assessment, /Security/);
+  assert.match(assessment, /Data & storage/);
+  assert.match(assessment, /Communication/);
+  assert.match(assessment, /Infrastructure/);
+  assert.match(css, /\.quality-score-list/);
+  assert.match(css, /\.choice-table/);
+});

@@ -16,10 +16,11 @@ export type Topic =
   | "scale"
   | "reliability";
 
-export type ScenarioId = "ticketing" | "shortener" | "social" | "delivery";
+export type ScenarioId = string;
 
 export type Scenario = {
   id: ScenarioId;
+  sourceSlug: string;
   name: string;
   shortName: string;
   brief: string;
@@ -47,16 +48,16 @@ export const deliveryFramework: FrameworkStage[] = [
     goal: "Prioritize two or three user outcomes, then choose the measurable system qualities that will shape the design. Estimate only when a number changes a decision.",
     questions: [
       "What are the two or three most important user journeys?",
-      "Which latency, availability, consistency, or durability targets matter most?",
+      "Which latency, availability, consistency, durability, or security targets matter most?",
     ],
-    checkpoint: "Summarize the prioritized functional requirements and the quantified non-functional requirements you will design toward.",
+    checkpoint: "Summarize the prioritized functional requirements and quantified non-functional requirements you will design toward.",
   },
   {
     id: "entities",
     label: "Core entities",
     shortLabel: "Entities",
     duration: "~2 min",
-    goal: "Name the actors and durable resources that appear in those user journeys. Keep this to a first-draft vocabulary, not a full schema.",
+    goal: "Name the actors and durable resources in those user journeys. Keep this to a first-draft vocabulary, not a full schema.",
     questions: [
       "Who are the actors, and which resources do they create or change?",
       "Which entities must be persisted or exchanged through the interface?",
@@ -95,7 +96,7 @@ export const deliveryFramework: FrameworkStage[] = [
     goal: "Draw the simplest complete system. Walk through one interface operation at a time, from the client to durable state and back.",
     questions: [
       "What is the simplest end-to-end path that satisfies the first endpoint?",
-      "At each arrow, what data moves and which state changes?",
+      "At each arrow, what data moves, which state changes, and is the call synchronous?",
     ],
     checkpoint: "Demonstrate that every core interface operation has a complete path through the diagram.",
   },
@@ -104,7 +105,7 @@ export const deliveryFramework: FrameworkStage[] = [
     label: "Deep dives",
     shortLabel: "Deep dive",
     duration: "~10 min",
-    goal: "Harden the working design against its most important non-functional requirements, bottlenecks, failures, and edge cases.",
+    goal: "Harden the working design against its most important bottlenecks, failures, abuse cases, and operational costs.",
     questions: [
       "Which bottleneck or failure most threatens the requirements you committed to?",
       "What trade-off does your next design change make, and how would you validate it?",
@@ -123,45 +124,6 @@ export function getGuidedNudge(stage: FrameworkStage, scenario: Scenario): strin
 export function getGuidedFollowUp(stage: FrameworkStage): string {
   return `Guided checkpoint — ${stage.checkpoint}`;
 }
-
-export const scenarios: Scenario[] = [
-  {
-    id: "ticketing",
-    name: "Design a global ticket marketplace",
-    shortName: "Ticket marketplace",
-    brief: "Fans discover events, reserve scarce seats, and purchase tickets during extreme onsale spikes.",
-    accent: "High contention",
-    scaleAnswer: "We serve 35 million monthly users. A major onsale can bring 1.2 million users in ten minutes, with roughly 80,000 seat-hold attempts per second at peak.",
-    functionalAnswer: "The core flow is event discovery, seat-map viewing, a five-minute seat hold, checkout, payment, and digital ticket delivery. Preventing double-sells is non-negotiable.",
-  },
-  {
-    id: "shortener",
-    name: "Design a planet-scale URL shortener",
-    shortName: "URL shortener",
-    brief: "Create short links, redirect globally with low latency, and expose useful click analytics.",
-    accent: "Read heavy",
-    scaleAnswer: "Assume 120 million new links per month and 18 billion redirects per month. Traffic is globally distributed and about 90% of reads should complete below 80 ms.",
-    functionalAnswer: "Users create an optional custom alias with an expiry, follow short links, and see aggregate analytics. A link may be disabled for abuse, but edits to its destination are out of scope.",
-  },
-  {
-    id: "social",
-    name: "Design a Facebook-style social feed",
-    shortName: "Social feed",
-    brief: "People publish posts and receive a relevant home feed from friends and followed creators.",
-    accent: "Fan-out tradeoffs",
-    scaleAnswer: "We have 600 million daily users, 90 million new posts per day, and a read-to-write ratio near 250:1. Celebrity accounts can have more than 50 million followers.",
-    functionalAnswer: "Focus on publishing text and media posts, following, home-feed retrieval, basic ranking, and privacy boundaries. Comments, messaging, and ads are out of scope.",
-  },
-  {
-    id: "delivery",
-    name: "Design an on-demand food delivery platform",
-    shortName: "Food delivery",
-    brief: "Customers order from nearby restaurants while couriers receive live assignments and location updates.",
-    accent: "Real-time state",
-    scaleAnswer: "At dinner peak we see 250,000 active orders, 400,000 couriers sending locations every five seconds, and 45,000 new orders per minute across 40 countries.",
-    functionalAnswer: "Customers browse nearby menus, place and track orders; restaurants accept them; couriers are matched and stream location. Menu authoring and payroll are out of scope.",
-  },
-];
 
 export const topicLabels: Record<Topic, string> = {
   requirements: "Requirements",
@@ -240,14 +202,14 @@ export function createArchitectReply(input: string, context: ReplyContext): { te
   if (topics.includes("api")) {
     return {
       topics,
-      text: `Let’s make one boundary real. Sketch the most important write API: request, response, and its idempotency behavior. Then tell me whether the client can safely retry after a timeout.`,
+      text: "Let’s make one boundary real. Sketch the most important write API: request, response, authentication, and idempotency behavior. Can the client safely retry after a timeout?",
     };
   }
 
   if (topics.includes("scale")) {
     return {
       topics,
-      text: `You are adding scale machinery. Good—now earn the complexity. What becomes the hot key or hot partition, and how do you prevent stale cached state from violating the product’s core invariant?`,
+      text: "You are adding scale machinery. Earn the complexity: what becomes the hot key or hot partition, and how do you prevent stale cached state from violating the product’s core invariant?",
     };
   }
 
@@ -261,14 +223,14 @@ export function createArchitectReply(input: string, context: ReplyContext): { te
   if (topics.includes("architecture")) {
     return {
       topics,
-      text: `I can follow the shape. Now narrate the critical path from the client to durable state. At each hop, tell me whether it is synchronous and why it belongs on that path.`,
+      text: "I can follow the shape. Now narrate the critical path from the client to durable state. At each hop, tell me whether it is synchronous and why it belongs on that path.",
     };
   }
 
   const turns = [
-    `I hear the direction. Make the product assumption behind it explicit, then show me where that decision appears on the diagram.`,
-    `Let me challenge that: what fails first at 10× load, and what signal would tell you before users notice?`,
-    `There are several valid designs here. Defend yours against the simplest credible alternative in terms of latency, correctness, and operating cost.`,
+    "I hear the direction. Make the product assumption behind it explicit, then show me where that decision appears on the diagram.",
+    "Let me challenge that: what fails first at 10× load, and what signal would tell you before users notice?",
+    "There are several valid designs here. Defend yours against the simplest credible alternative in terms of latency, correctness, security, and operating cost.",
   ];
 
   return { topics, text: `${turns[context.turn % turns.length]} ${pushByLevel[context.level]}` };
@@ -278,5 +240,5 @@ export function getNudge(covered: Topic[]): string {
   const missing = (Object.keys(topicLabels) as Topic[]).find((topic) => !covered.includes(topic));
   return missing
     ? `Try asking a crisp question about ${topicLabels[missing].toLowerCase()}, then explain how the answer would change your design.`
-    : "Pick one arrow on your diagram and explain its contract, failure behavior, and observability signals.";
+    : "Pick one arrow on your diagram and explain its contract, failure behavior, security boundary, and observability signals.";
 }
