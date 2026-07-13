@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://archroom-design-interview.shaikjaved1228.chatgpt.site"),
+  metadataBase: new URL("https://interview-lab.shaikjaved1228.chatgpt.site"),
   title: {
     default: "InterviewLab — System design and coding practice",
     template: "%s · InterviewLab",

@@ -22,6 +22,7 @@ test("server-renders the InterviewLab onboarding experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>InterviewLab — System design and coding practice<\/title>/i);
   assert.match(html, /og-interviewlab\.png/i);
+  assert.match(html, /https:\/\/interview-lab\.shaikjaved1228\.chatgpt\.site/i);
   assert.doesNotMatch(html, /InterviewRoom/i);
   assert.match(html, /Think out loud/);
   assert.match(html, /Junior/);
