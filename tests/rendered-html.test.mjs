@@ -102,4 +102,6 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(engine, /buildCodingNotes/);
   assert.match(css, /\.coding-workspace/);
   assert.match(css, /\.coding-notes-modal/);
+  assert.doesNotMatch(app, /Upload your resume|Role context|handleFile/);
+  assert.doesNotMatch(css, /\.resume-drop|\.summary-label/);
 });

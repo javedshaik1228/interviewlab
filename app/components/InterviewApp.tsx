@@ -9,7 +9,6 @@ import {
   CircleHelp,
   Clock3,
   Code2,
-  FileText,
   Flag,
   ExternalLink,
   Lightbulb,
@@ -21,10 +20,9 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
-  Upload,
   X,
 } from "lucide-react";
-import { ChangeEvent, FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import { BoardSignals, DiagramBoard } from "./DiagramBoard";
 import {
   createArchitectReply,
@@ -94,8 +92,6 @@ export function InterviewApp() {
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
   const [scenarioQuery, setScenarioQuery] = useState("");
-  const [resumeName, setResumeName] = useState("");
-  const [resumeSummary, setResumeSummary] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [covered, setCovered] = useState<Topic[]>([]);
@@ -159,17 +155,6 @@ export function InterviewApp() {
       },
     ]);
     startTimer();
-  };
-
-  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setResumeName(file.name);
-    if (file.type.startsWith("text/") || file.name.endsWith(".md")) {
-      const reader = new FileReader();
-      reader.onload = () => setResumeSummary(String(reader.result ?? "").slice(0, 1200));
-      reader.readAsText(file);
-    }
   };
 
   const submitMessage = (event?: FormEvent) => {
@@ -360,25 +345,9 @@ export function InterviewApp() {
             ) : (
               <div className="setup-content">
                 <button className="back-button" onClick={() => setStep(2)} type="button"><ChevronLeft size={16} /> Back</button>
-                <span className="step-kicker">Personalize the round</span>
-                <h2>{roundType === "leetcode" ? "Set up your coding round." : sessionMode === "mock" ? "Add context. We’ll pick the problem." : "Add context, then pick a problem."}</h2>
-                <p>Your resume helps frame follow-ups around your background. It never leaves this browser session.</p>
-
-                <label className={`resume-drop ${resumeName ? "has-file" : ""}`}>
-                  <input accept=".pdf,.doc,.docx,.txt,.md" onChange={handleFile} type="file" />
-                  {resumeName ? <FileText size={23} /> : <Upload size={23} />}
-                  <span><strong>{resumeName || "Upload your resume"}</strong><small>{resumeName ? "Ready for this session" : "PDF, DOCX, TXT · up to 10 MB"}</small></span>
-                  {resumeName && <Check size={18} />}
-                </label>
-
-                <label className="summary-label">
-                  <span>Role context <small>optional</small></span>
-                  <textarea
-                    onChange={(event) => setResumeSummary(event.target.value)}
-                    placeholder="e.g. Backend engineer working on payments and event-driven systems"
-                    value={resumeSummary}
-                  />
-                </label>
+                <span className="step-kicker">Ready the round</span>
+                <h2>{roundType === "leetcode" ? "Set up your coding round." : sessionMode === "mock" ? "Your problem stays a surprise." : "Choose a design problem."}</h2>
+                <p>{roundType === "leetcode" ? "Choose a language, then receive a level-calibrated problem." : "The room is already calibrated to your selected experience level."}</p>
 
                 {roundType === "leetcode" ? (
                   <>
