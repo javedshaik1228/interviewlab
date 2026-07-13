@@ -163,3 +163,19 @@ test("rejects incomplete provider requests without caching them", async () => {
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.deepEqual(await response.json(), { error: "Invalid provider request." });
 });
+
+test("keeps interview workspaces clean with compact problems and dockable chat", async () => {
+  const [app, codingRoom, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /chatDocked/);
+  assert.match(codingRoom, /chatDocked/);
+  assert.match(app, /Dock system-design chat/);
+  assert.match(codingRoom, /Dock coding chat/);
+  assert.match(css, /\.workspace\.chat-docked/);
+  assert.match(css, /\.coding-workspace\.chat-docked/);
+  assert.match(css, /\.embedded-problem iframe[^}]*transform:\s*scale\(0\.86\)/s);
+});

@@ -41,6 +41,7 @@ import {
 import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/question-catalog";
 import { assessDesign } from "../lib/design-assessment";
 import { CodingInterview } from "./CodingInterview";
+import { ChatDockRail } from "./ChatDockRail";
 import { requestInterviewerTurn } from "../lib/provider-client";
 import {
   defaultProviderModels,
@@ -117,6 +118,7 @@ export function InterviewApp() {
   const [mobilePanel, setMobilePanel] = useState<"discussion" | "canvas">("discussion");
   const [frameworkStepIndex, setFrameworkStepIndex] = useState(0);
   const [isReplying, setIsReplying] = useState(false);
+  const [chatDocked, setChatDocked] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageId = useRef(1);
 
@@ -287,6 +289,7 @@ export function InterviewApp() {
     setShowDebrief(false);
     setIsPaused(false);
     setIsReplying(false);
+    setChatDocked(false);
   };
 
   const activeNudge = sessionMode === "guided"
@@ -509,12 +512,16 @@ export function InterviewApp() {
         <button className={mobilePanel === "canvas" ? "active" : ""} onClick={() => setMobilePanel("canvas")} type="button"><BrainCircuit size={16} /> Canvas</button>
       </nav>
 
-      <section className="workspace">
+      <section className={`workspace ${chatDocked ? "chat-docked" : ""}`}>
+        {chatDocked ? (
+          <ChatDockRail label="system-design chat" onRestore={() => setChatDocked(false)} />
+        ) : (
         <aside className={`discussion-panel ${mobilePanel === "discussion" ? "mobile-active" : ""}`}>
           <div className="interviewer-card">
             <div className="avatar">SA<span /></div>
             <div><strong>Maya Chen</strong><span>Principal architect · {getProviderLabel(provider.id)} interviewer</span></div>
             <span className="listening"><Mic size={13} /> listening</span>
+            <button className="chat-dock-button" aria-label="Dock system-design chat" onClick={() => setChatDocked(true)} title="Dock chat to the left rail" type="button"><ChevronLeft size={14} /></button>
           </div>
 
           {sessionMode === "guided" ? (
@@ -606,6 +613,7 @@ export function InterviewApp() {
             </div>
           </form>
         </aside>
+        )}
 
         <section className={`canvas-panel ${mobilePanel === "canvas" ? "mobile-active" : ""}`}>
           <div className="canvas-toolbar">

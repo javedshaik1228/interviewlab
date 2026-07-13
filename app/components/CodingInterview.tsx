@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
   Clock3,
   Code2,
   ExternalLink,
@@ -22,6 +23,7 @@ import { buildCodingNotes, CodingMessage, createCodingNudge, createCodingReply }
 import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
 import { requestInterviewerTurn } from "../lib/provider-client";
 import { getProviderLabel, ProviderConnection } from "../lib/provider-types";
+import { ChatDockRail } from "./ChatDockRail";
 
 type Props = {
   level: Level;
@@ -57,6 +59,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
   const [workspaceTab, setWorkspaceTab] = useState<"problem" | "code">("problem");
   const [problemLoaded, setProblemLoaded] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
+  const [chatDocked, setChatDocked] = useState(false);
   const messageId = useRef(2);
 
   const notes = useMemo(
@@ -149,12 +152,16 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
         </div>
       </header>
 
-      <section className="coding-workspace">
+      <section className={`coding-workspace ${chatDocked ? "chat-docked" : ""}`}>
+        {chatDocked ? (
+          <ChatDockRail label="coding chat" onRestore={() => setChatDocked(false)} />
+        ) : (
         <aside className="coding-discussion">
           <div className="coding-problem-card">
             <div>
               <span className={`difficulty-pill ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span>
               <span>Pattern hidden during interview</span>
+              <button className="chat-dock-button" aria-label="Dock coding chat" onClick={() => setChatDocked(true)} title="Dock chat to the left rail" type="button"><ChevronLeft size={14} /></button>
             </div>
             <h1>{problem.title}</h1>
             <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving InterviewLab.</p>
@@ -195,6 +202,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
             </div>
           </form>
         </aside>
+        )}
 
         <section className="code-panel">
           <div className="code-toolbar">
