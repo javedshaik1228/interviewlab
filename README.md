@@ -1,15 +1,15 @@
-# ArchRoom
+# InterviewRoom
 
-ArchRoom is a discussion-first system design mock interview. Candidates choose
-their target level, provide resume context, clarify an ambiguous problem, and
-iterate on a live architecture diagram while a senior-architect interviewer
-challenges their decisions.
+InterviewRoom is a discussion-first technical interview studio. Candidates
+choose their target level and practice either system design or NeetCode 150
+coding rounds while an adaptive interviewer challenges their reasoning.
 
 ## What is included
 
 - Junior, mid-level, and senior architect calibration
-- Resume upload and optional role context
-- Ticket marketplace, URL shortener, social feed, and food delivery prompts
+- Guided learning and realistic mock-interview modes
+- A curated catalog of system-design prompts
+- NeetCode 150 coding rounds with embedded prompts and submission notes
 - Adaptive requirement answers and architecture follow-ups
 - Embedded Excalidraw canvas with label/topology-aware review
 - Coverage tracking and an end-of-session debrief

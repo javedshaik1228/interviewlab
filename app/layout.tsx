@@ -15,19 +15,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://archroom-design-interview.shaikjaved1228.chatgpt.site"),
   title: {
-    default: "ArchRoom — System design and coding practice",
-    template: "%s · ArchRoom",
+    default: "InterviewRoom — System design and coding practice",
+    template: "%s · InterviewRoom",
   },
   description:
     "Practice discussion-led system design interviews and NeetCode 150 coding rounds with adaptive feedback.",
   openGraph: {
-    title: "ArchRoom",
+    title: "InterviewRoom",
     description: "System design + coding interviews",
-    images: [{ url: "/og.png", width: 1792, height: 933, alt: "ArchRoom system design and coding interview practice" }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "InterviewRoom system design and coding interview practice" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ArchRoom",
+    title: "InterviewRoom",
     description: "System design + coding interviews",
     images: ["/og.png"],
   },

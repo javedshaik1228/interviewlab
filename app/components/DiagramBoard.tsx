@@ -10,7 +10,7 @@ const Excalidraw = dynamic(
     ssr: false,
     loading: () => (
       <div className="canvas-loading" role="status">
-        <span className="canvas-loading-mark">AR</span>
+        <span className="canvas-loading-mark">IR</span>
         <span>Preparing your architecture canvas…</span>
       </div>
     ),
@@ -67,7 +67,7 @@ export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals)
       <Excalidraw
         onChange={(elements) => handleChange(elements as readonly DiagramElement[])}
         theme="light"
-        name="ArchRoom system design"
+        name="InterviewRoom system design"
         UIOptions={{
           canvasActions: {
             changeViewBackgroundColor: false,

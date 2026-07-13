@@ -610,7 +610,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`brand ${compact ? "compact" : ""}`}>
       <span className="brand-mark"><span /><span /><span /></span>
-      <span><strong>ArchRoom</strong>{!compact && <small>System design studio</small>}</span>
+      <span><strong>InterviewRoom</strong>{!compact && <small>Technical interview studio</small>}</span>
     </div>
   );
 }
