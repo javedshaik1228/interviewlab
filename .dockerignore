@@ -1,0 +1,15 @@
+.git
+.github
+.next
+.npm-cache
+.vinext
+.wrangler
+dist
+node_modules
+work
+outputs
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.tsbuildinfo

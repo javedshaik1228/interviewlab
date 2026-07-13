@@ -22,7 +22,7 @@ test("server-renders the InterviewLab onboarding experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>InterviewLab — System design and coding practice<\/title>/i);
   assert.match(html, /og-interviewlab\.png/i);
-  assert.match(html, /https:\/\/interview-lab\.shaikjaved1228\.chatgpt\.site/i);
+  assert.match(html, /http:\/\/localhost:3000\/og-interviewlab\.png/i);
   assert.doesNotMatch(html, /InterviewRoom/i);
   assert.match(html, /Think out loud/);
   assert.match(html, /Junior/);
@@ -178,4 +178,34 @@ test("keeps interview workspaces clean with compact problems and dockable chat",
   assert.match(css, /\.workspace\.chat-docked/);
   assert.match(css, /\.coding-workspace\.chat-docked/);
   assert.match(css, /\.embedded-problem iframe[^}]*transform:\s*scale\(0\.86\)/s);
+});
+
+test("ships a portable standalone deployment", async () => {
+  const [packageText, nextConfig, dockerfile, dockerIgnore, compose, layout, healthRoute, readme, gitignore] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../Dockerfile", import.meta.url), "utf8"),
+    readFile(new URL("../.dockerignore", import.meta.url), "utf8"),
+    readFile(new URL("../compose.yaml", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/health/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../.gitignore", import.meta.url), "utf8"),
+  ]);
+  const packageJson = JSON.parse(packageText);
+
+  assert.equal(packageJson.scripts.build, "next build --webpack");
+  assert.equal(packageJson.scripts.start, "next start");
+  assert.match(packageJson.scripts["build:sites"], /run-vinext\.mjs build/);
+  assert.match(nextConfig, /output:\s*"standalone"/);
+  assert.match(dockerfile, /HEALTHCHECK/);
+  assert.match(dockerfile, /node",\s*"server\.js"/);
+  assert.match(dockerIgnore, /node_modules/);
+  assert.match(compose, /interviewlab:/);
+  assert.match(layout, /process\.env\.SITE_URL/);
+  assert.match(layout, /await headers\(\)/);
+  assert.doesNotMatch(layout, /next\/font\/google/);
+  assert.match(healthRoute, /status:\s*"ok"/);
+  assert.match(readme, /Self-host with Docker/);
+  assert.match(gitignore, /!\.env\.example/);
 });

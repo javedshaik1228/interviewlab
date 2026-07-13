@@ -171,7 +171,7 @@ async function callProvider(request: InterviewTurnRequest, prompt: ProviderPaylo
   return collectText(data).join("\n");
 }
 
-export function guardCodingReply(reply: string, candidateText: string) {
+function guardCodingReply(reply: string, candidateText: string) {
   const leakedPattern = codingPatterns.some((pattern) => pattern.test(reply) && !pattern.test(candidateText));
   const leakedComplexity = /\bO\s*\([^)]+\)/i.test(reply) && !/\bO\s*\([^)]+\)/i.test(candidateText);
   return leakedPattern || leakedComplexity ? neutralCodingReply : reply;
