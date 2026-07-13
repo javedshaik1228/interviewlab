@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  Bot,
   BookOpen,
   BrainCircuit,
   Check,
@@ -12,6 +13,7 @@ import {
   Flag,
   ExternalLink,
   Lightbulb,
+  KeyRound,
   MessageSquareText,
   Mic,
   Paperclip,
@@ -39,6 +41,15 @@ import {
 import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/question-catalog";
 import { assessDesign } from "../lib/design-assessment";
 import { CodingInterview } from "./CodingInterview";
+import { requestInterviewerTurn } from "../lib/provider-client";
+import {
+  defaultProviderModels,
+  getProviderLabel,
+  providerOptions,
+  providerRequiresKey,
+  ProviderConnection,
+  ProviderId,
+} from "../lib/provider-types";
 
 type RoundType = "system-design" | "leetcode";
 
@@ -92,6 +103,9 @@ export function InterviewApp() {
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
   const [scenarioQuery, setScenarioQuery] = useState("");
+  const [providerId, setProviderId] = useState<ProviderId>("builtin");
+  const [providerApiKey, setProviderApiKey] = useState("");
+  const [providerModel, setProviderModel] = useState(defaultProviderModels.builtin);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [covered, setCovered] = useState<Topic[]>([]);
@@ -102,6 +116,7 @@ export function InterviewApp() {
   const [showCoach, setShowCoach] = useState(true);
   const [mobilePanel, setMobilePanel] = useState<"discussion" | "canvas">("discussion");
   const [frameworkStepIndex, setFrameworkStepIndex] = useState(0);
+  const [isReplying, setIsReplying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageId = useRef(1);
 
@@ -110,6 +125,12 @@ export function InterviewApp() {
     [scenarioId],
   );
   const frameworkStage = deliveryFramework[frameworkStepIndex];
+  const provider = useMemo<ProviderConnection>(() => ({
+    id: providerId,
+    apiKey: providerApiKey,
+    model: providerModel,
+  }), [providerApiKey, providerId, providerModel]);
+  const providerCanStart = !providerRequiresKey(providerId) || (providerApiKey.trim().length >= 8 && providerModel.trim().length >= 2);
   const candidateText = useMemo(
     () => messages.filter((message) => message.role === "candidate").map((message) => message.text).join(" "),
     [messages],
@@ -135,7 +156,14 @@ export function InterviewApp() {
     setMessages((current) => [...current, { id: messageId.current++, role, text }]);
   }, []);
 
+  const selectProvider = (nextProvider: ProviderId) => {
+    if (nextProvider !== providerId) setProviderApiKey("");
+    setProviderId(nextProvider);
+    setProviderModel(defaultProviderModels[nextProvider]);
+  };
+
   const beginInterview = () => {
+    if (!providerCanStart) return;
     if (roundType === "leetcode") {
       setPhase("interview");
       startTimer();
@@ -157,10 +185,10 @@ export function InterviewApp() {
     startTimer();
   };
 
-  const submitMessage = (event?: FormEvent) => {
+  const submitMessage = async (event?: FormEvent) => {
     event?.preventDefault();
     const value = input.trim();
-    if (!value) return;
+    if (!value || isReplying) return;
     addMessage("candidate", value);
     const reply = createArchitectReply(value, {
       scenario,
@@ -174,7 +202,38 @@ export function InterviewApp() {
       : `${reply.text}\n\nArchitect probe: ${liveAssessment.nextProbe}`;
     setCovered((current) => Array.from(new Set([...current, ...reply.topics])));
     setInput("");
-    window.setTimeout(() => addMessage("architect", replyText), 350);
+
+    if (provider.id === "builtin") {
+      window.setTimeout(() => addMessage("architect", replyText), 350);
+      return;
+    }
+
+    setIsReplying(true);
+    try {
+      const providerReply = await requestInterviewerTurn({
+        provider,
+        round: "system-design",
+        level,
+        scenarioId: scenario.id,
+        sessionMode,
+        canvas: {
+          shapes: signals.shapes,
+          connections: signals.connections,
+          labels: signals.labels,
+        },
+        messages: [...messages, { id: -1, role: "candidate" as const, text: value }].map((message) => ({
+          role: message.role === "architect" ? "interviewer" as const : message.role,
+          text: message.text,
+        })),
+      });
+      addMessage("architect", providerReply);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Provider request failed.";
+      addMessage("system", `${getProviderLabel(provider.id)} unavailable · ${reason} Continuing with the built-in interviewer.`);
+      addMessage("architect", replyText);
+    } finally {
+      setIsReplying(false);
+    }
   };
 
   const advanceFramework = () => {
@@ -227,6 +286,7 @@ export function InterviewApp() {
     setSeconds(0);
     setShowDebrief(false);
     setIsPaused(false);
+    setIsReplying(false);
   };
 
   const activeNudge = sessionMode === "guided"
@@ -238,7 +298,7 @@ export function InterviewApp() {
       <main className="onboarding-page">
         <header className="landing-header">
           <Brand />
-          <div className="landing-note"><ShieldCheck size={16} /> Private by default · your files stay in this session</div>
+          <div className="landing-note"><ShieldCheck size={16} /> {provider.id === "builtin" ? "Private by default · your files stay in this session" : `${getProviderLabel(provider.id)} selected · interview context is sent to that API`}</div>
         </header>
 
         <section className="onboarding-layout">
@@ -390,7 +450,16 @@ export function InterviewApp() {
                   </fieldset>
                 )}
 
-                <button className="primary-action" onClick={beginInterview} type="button">
+                <ProviderPicker
+                  apiKey={providerApiKey}
+                  model={providerModel}
+                  onApiKeyChange={setProviderApiKey}
+                  onModelChange={setProviderModel}
+                  onProviderChange={selectProvider}
+                  providerId={providerId}
+                />
+
+                <button className="primary-action" disabled={!providerCanStart} onClick={beginInterview} type="button">
                   Enter the {roundType === "leetcode" ? "coding" : "interview"} room <ArrowRight size={18} />
                 </button>
               </div>
@@ -413,6 +482,7 @@ export function InterviewApp() {
         onFinish={stopTimer}
         onReset={resetInterview}
         onTogglePause={togglePause}
+        provider={provider}
         seconds={seconds}
       />
     );
@@ -443,7 +513,7 @@ export function InterviewApp() {
         <aside className={`discussion-panel ${mobilePanel === "discussion" ? "mobile-active" : ""}`}>
           <div className="interviewer-card">
             <div className="avatar">SA<span /></div>
-            <div><strong>Maya Chen</strong><span>Principal architect · interviewer</span></div>
+            <div><strong>Maya Chen</strong><span>Principal architect · {getProviderLabel(provider.id)} interviewer</span></div>
             <span className="listening"><Mic size={13} /> listening</span>
           </div>
 
@@ -531,8 +601,8 @@ export function InterviewApp() {
             />
             <div className="composer-actions">
               <button className="attach-button" type="button" aria-label="Attach note"><Paperclip size={17} /></button>
-              <span>↵ send · shift ↵ newline</span>
-              <button className="send-button" disabled={!input.trim()} type="submit" aria-label="Send response"><Send size={17} /></button>
+              <span>{isReplying ? `${getProviderLabel(provider.id)} is thinking…` : "↵ send · shift ↵ newline"}</span>
+              <button className="send-button" disabled={!input.trim() || isReplying} type="submit" aria-label="Send response"><Send size={17} /></button>
             </div>
           </form>
         </aside>
@@ -603,6 +673,77 @@ export function InterviewApp() {
         </div>
       )}
     </main>
+  );
+}
+
+function ProviderPicker({
+  apiKey,
+  model,
+  onApiKeyChange,
+  onModelChange,
+  onProviderChange,
+  providerId,
+}: {
+  apiKey: string;
+  model: string;
+  onApiKeyChange: (value: string) => void;
+  onModelChange: (value: string) => void;
+  onProviderChange: (provider: ProviderId) => void;
+  providerId: ProviderId;
+}) {
+  const selectedProvider = providerOptions.find((option) => option.id === providerId) ?? providerOptions[0];
+  const needsKey = providerRequiresKey(providerId);
+
+  return (
+    <fieldset className="provider-picker">
+      <legend><Bot size={15} /> Choose your interviewer</legend>
+      <p>Select the engine for live follow-ups. The built-in interviewer remains available if an external provider fails.</p>
+      <div className="provider-grid">
+        {providerOptions.map((option) => (
+          <button
+            aria-pressed={providerId === option.id}
+            className={providerId === option.id ? "selected" : ""}
+            key={option.id}
+            onClick={() => onProviderChange(option.id)}
+            type="button"
+          >
+            <strong>{option.shortLabel}</strong>
+            <span>{providerId === option.id && <Check size={11} />}</span>
+          </button>
+        ))}
+      </div>
+      <small className="provider-description">{selectedProvider.description}</small>
+
+      {needsKey ? (
+        <div className="provider-credentials">
+          <label>
+            <span><KeyRound size={13} /> Session-only API key</span>
+            <input
+              aria-label={`${selectedProvider.shortLabel} API key`}
+              autoComplete="off"
+              onChange={(event) => onApiKeyChange(event.target.value)}
+              placeholder="Paste your provider API key"
+              spellCheck={false}
+              type="password"
+              value={apiKey}
+            />
+          </label>
+          <label>
+            <span>Model or agent ID</span>
+            <input
+              aria-label={`${selectedProvider.shortLabel} model ID`}
+              onChange={(event) => onModelChange(event.target.value)}
+              spellCheck={false}
+              type="text"
+              value={model}
+            />
+          </label>
+          <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewRoom to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
+        </div>
+      ) : (
+        <div className="provider-built-in-note"><ShieldCheck size={13} /> No account, key, or network request required.</div>
+      )}
+    </fieldset>
   );
 }
 

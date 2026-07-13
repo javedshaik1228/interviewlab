@@ -118,3 +118,45 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.doesNotMatch(app, /Upload your resume|Role context|handleFile/);
   assert.doesNotMatch(css, /\.resume-drop|\.summary-label/);
 });
+
+test("supports session-only interviewer provider choice with safe fallback", async () => {
+  const [app, codingRoom, providerTypes, providerRoute, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/provider-types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/interviewer/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /Choose your interviewer/);
+  assert.match(app, /Session-only API key/);
+  assert.match(app, /providerCanStart/);
+  assert.match(codingRoom, /requestInterviewerTurn/);
+  assert.match(providerTypes, /"builtin" \| "openai" \| "anthropic" \| "gemini" \| "antigravity"/);
+  assert.match(providerRoute, /api\.openai\.com\/v1\/responses/);
+  assert.match(providerRoute, /api\.anthropic\.com\/v1\/messages/);
+  assert.match(providerRoute, /generativelanguage\.googleapis\.com/);
+  assert.match(providerRoute, /guardCodingReply/);
+  assert.match(providerRoute, /no-store/);
+  assert.doesNotMatch(`${app}\n${codingRoom}`, /localStorage|sessionStorage/);
+  assert.match(css, /\.provider-picker/);
+});
+
+test("rejects incomplete provider requests without caching them", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("provider-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/api/interviewer", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: { id: "openai", apiKey: "", model: "" } }),
+    }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { error: "Invalid provider request." });
+});

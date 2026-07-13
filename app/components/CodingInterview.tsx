@@ -20,6 +20,8 @@ import { FormEvent, useMemo, useRef, useState } from "react";
 import type { Level } from "../lib/interview-engine";
 import { buildCodingNotes, CodingMessage, createCodingNudge, createCodingReply } from "../lib/coding-engine";
 import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
+import { requestInterviewerTurn } from "../lib/provider-client";
+import { getProviderLabel, ProviderConnection } from "../lib/provider-types";
 
 type Props = {
   level: Level;
@@ -29,6 +31,7 @@ type Props = {
   onTogglePause: () => void;
   onFinish: () => void;
   onReset: () => void;
+  provider: ProviderConnection;
 };
 
 function formatTime(seconds: number) {
@@ -37,7 +40,7 @@ function formatTime(seconds: number) {
   return `${minutes}:${remaining}`;
 }
 
-export function CodingInterview({ level, language, seconds, isPaused, onTogglePause, onFinish, onReset }: Props) {
+export function CodingInterview({ level, language, seconds, isPaused, onTogglePause, onFinish, onReset, provider }: Props) {
   const [problem] = useState(() => pickRandomCodingProblem(level));
   const commentPrefix = language === "Python" ? "#" : "//";
   const [messages, setMessages] = useState<CodingMessage[]>([
@@ -53,6 +56,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
   const [showNotes, setShowNotes] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<"problem" | "code">("problem");
   const [problemLoaded, setProblemLoaded] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
   const messageId = useRef(2);
 
   const notes = useMemo(
@@ -60,22 +64,56 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
     [problem, messages, code, nudgesUsed],
   );
 
-  const submitMessage = (event?: FormEvent) => {
+  const submitMessage = async (event?: FormEvent) => {
     event?.preventDefault();
     const value = input.trim();
-    if (!value) return;
+    if (!value || isReplying) return;
     const turn = messages.filter((message) => message.role === "candidate").length;
     const asksForNudge = /hint|stuck|help|brute|not sure|don.?t know/i.test(value);
     if (asksForNudge) setNudgesUsed((current) => current + 1);
     setMessages((current) => [...current, { id: messageId.current++, role: "candidate", text: value }]);
     setInput("");
-    window.setTimeout(() => {
-      setMessages((current) => [...current, {
-        id: messageId.current++,
-        role: "interviewer",
-        text: createCodingReply(value, turn),
-      }]);
-    }, 300);
+    const fallbackReply = createCodingReply(value, turn);
+    if (provider.id === "builtin") {
+      window.setTimeout(() => {
+        setMessages((current) => [...current, {
+          id: messageId.current++,
+          role: "interviewer",
+          text: fallbackReply,
+        }]);
+      }, 300);
+      return;
+    }
+
+    setIsReplying(true);
+    try {
+      const providerReply = await requestInterviewerTurn({
+        provider,
+        round: "coding",
+        level,
+        language,
+        code,
+        problem: {
+          id: problem.id,
+          title: problem.title,
+          difficulty: problem.difficulty,
+        },
+        messages: [...messages, { id: -1, role: "candidate" as const, text: value }].map((message) => ({
+          role: message.role,
+          text: message.text,
+        })),
+      });
+      setMessages((current) => [...current, { id: messageId.current++, role: "interviewer", text: providerReply }]);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Provider request failed.";
+      setMessages((current) => [
+        ...current,
+        { id: messageId.current++, role: "system", text: `${getProviderLabel(provider.id)} unavailable · ${reason} Continuing with the built-in interviewer.` },
+        { id: messageId.current++, role: "interviewer", text: fallbackReply },
+      ]);
+    } finally {
+      setIsReplying(false);
+    }
   };
 
   const requestNudge = () => {
@@ -101,7 +139,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
         </div>
         <div className="session-title coding-session-title">
           <span className="live-dot" />
-          <div><strong>{problem.title}</strong><small>NeetCode 150 · Coding interview</small></div>
+          <div><strong>{problem.title}</strong><small>NeetCode 150 · {getProviderLabel(provider.id)} interviewer</small></div>
         </div>
         <div className="header-actions">
           <button className="timer-button" onClick={onTogglePause} type="button" aria-label={isPaused ? "Resume timer" : "Pause timer"}>
@@ -133,7 +171,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           </div>
 
           <div className="coding-nudge-row">
-            <button onClick={requestNudge} type="button"><Lightbulb size={14} /> Reasoning nudge</button>
+            <button disabled={isReplying} onClick={requestNudge} type="button"><Lightbulb size={14} /> Reasoning nudge</button>
             <span>{nudgesUsed} nudges used</span>
           </div>
 
@@ -152,8 +190,8 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
               value={input}
             />
             <div className="composer-actions">
-              <span>Brute force is accepted · optimization is still discussed</span>
-              <button className="send-button" disabled={!input.trim()} type="submit" aria-label="Send response"><Send size={17} /></button>
+              <span>{isReplying ? `${getProviderLabel(provider.id)} is thinking…` : "Brute force is accepted · optimization is still discussed"}</span>
+              <button className="send-button" disabled={!input.trim() || isReplying} type="submit" aria-label="Send response"><Send size={17} /></button>
             </div>
           </form>
         </aside>

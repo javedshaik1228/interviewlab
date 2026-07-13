@@ -10,10 +10,16 @@ coding rounds while an adaptive interviewer challenges their reasoning.
 - Guided learning and realistic mock-interview modes
 - A curated catalog of system-design prompts
 - NeetCode 150 coding rounds with embedded prompts and submission notes
+- Session-only provider choice for OpenAI, Claude, Gemini, and Antigravity APIs
 - Adaptive requirement answers and architecture follow-ups
 - Embedded Excalidraw canvas with label/topology-aware review
 - Coverage tracking and an end-of-session debrief
 - Responsive interview workspace for desktop and mobile
+
+External providers use a bring-your-own-key flow. Keys remain in the active
+browser tab, are sent only through the same-origin interviewer endpoint, and
+are not persisted by the application. The built-in interviewer requires no key
+and is used automatically if an external provider fails.
 
 ## Local development
 
