@@ -98,9 +98,15 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(app, /CodingInterview/);
   assert.match(codingRoom, /Submit & view notes/);
   assert.match(codingRoom, /Candidate input notes/);
+  assert.match(codingRoom, /workspaceTab.*problem/);
+  assert.match(codingRoom, /<iframe/);
+  assert.match(codingRoom, /src=\{problem\.sourceUrl\}/);
+  assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside ArchRoom/);
   assert.match(engine, /brute-force approach is a valid baseline/);
   assert.match(engine, /buildCodingNotes/);
   assert.match(css, /\.coding-workspace/);
+  assert.match(css, /\.embedded-problem/);
+  assert.match(css, /\.code-workspace-tabs/);
   assert.match(css, /\.coding-notes-modal/);
   assert.doesNotMatch(app, /Upload your resume|Role context|handleFile/);
   assert.doesNotMatch(css, /\.resume-drop|\.summary-label/);

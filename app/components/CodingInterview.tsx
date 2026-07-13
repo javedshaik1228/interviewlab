@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   Clock3,
   Code2,
@@ -50,6 +51,8 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
   const [code, setCode] = useState(`${commentPrefix} ${language} draft for ${problem.title}\n${commentPrefix} Talk through your invariant and complexity as you work.\n\n`);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<"problem" | "code">("problem");
+  const [problemLoaded, setProblemLoaded] = useState(false);
   const messageId = useRef(2);
 
   const notes = useMemo(
@@ -116,8 +119,8 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
               <span>{problem.category}</span>
             </div>
             <h1>{problem.title}</h1>
-            <p>The full statement stays with its source. Use this room for clarification, reasoning, implementation, and optimization.</p>
-            <a href={problem.sourceUrl} target="_blank" rel="noreferrer">Open full problem <ExternalLink size={12} /></a>
+            <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving ArchRoom.</p>
+            <a href={problem.sourceUrl} target="_blank" rel="noreferrer">Open directly if the embed is unavailable <ExternalLink size={12} /></a>
           </div>
 
           <div className="coding-message-list" aria-live="polite">
@@ -157,20 +160,66 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
 
         <section className="code-panel">
           <div className="code-toolbar">
-            <div><Code2 size={16} /><strong>Solution draft</strong><span>{language}</span></div>
-            <div><Target size={14} /><span>Target: {problem.targetComplexity}</span></div>
+            <div className="code-workspace-tabs" role="tablist" aria-label="Coding workspace">
+              <button
+                aria-controls="problem-workspace"
+                aria-selected={workspaceTab === "problem"}
+                className={workspaceTab === "problem" ? "active" : ""}
+                onClick={() => setWorkspaceTab("problem")}
+                role="tab"
+                type="button"
+              >
+                <BookOpen size={15} /> Problem
+              </button>
+              <button
+                aria-controls="code-workspace"
+                aria-selected={workspaceTab === "code"}
+                className={workspaceTab === "code" ? "active" : ""}
+                onClick={() => setWorkspaceTab("code")}
+                role="tab"
+                type="button"
+              >
+                <Code2 size={15} /> Code <span>{language}</span>
+              </button>
+            </div>
+            <div className="complexity-target"><Target size={14} /><span>Target: {problem.targetComplexity}</span></div>
+          </div>
+          <div className="embedded-problem" hidden={workspaceTab !== "problem"} id="problem-workspace" role="tabpanel">
+            {!problemLoaded && (
+              <div className="problem-frame-loading" aria-live="polite">
+                <span className="canvas-loading-mark">AR</span>
+                <strong>Loading the official problem…</strong>
+                <small>The question, examples, constraints, hints, and solutions are served by NeetCode.</small>
+              </div>
+            )}
+            <iframe
+              onLoad={() => setProblemLoaded(true)}
+              referrerPolicy="strict-origin-when-cross-origin"
+              src={problem.sourceUrl}
+              title={`${problem.title} — official NeetCode problem`}
+            />
           </div>
           <textarea
             aria-label="Solution code editor"
             className="code-editor"
+            hidden={workspaceTab !== "code"}
+            id="code-workspace"
             onChange={(event) => setCode(event.target.value)}
+            role="tabpanel"
             spellCheck={false}
             value={code}
           />
-          <footer className="code-footer">
-            <span><Sparkles size={13} /> Explain correctness and complexity in the discussion.</span>
-            <button onClick={submitSolution} type="button">Submit & view notes <ArrowRight size={14} /></button>
-          </footer>
+          {workspaceTab === "problem" ? (
+            <footer className="code-footer problem-footer">
+              <span><BookOpen size={13} /> Official content stays on NeetCode and is displayed inside ArchRoom.</span>
+              <button onClick={() => setWorkspaceTab("code")} type="button">Start coding <ArrowRight size={14} /></button>
+            </footer>
+          ) : (
+            <footer className="code-footer">
+              <span><Sparkles size={13} /> Explain correctness and complexity in the discussion.</span>
+              <button onClick={submitSolution} type="button">Submit & view notes <ArrowRight size={14} /></button>
+            </footer>
+          )}
         </section>
       </section>
 

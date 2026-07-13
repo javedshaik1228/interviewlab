@@ -548,7 +548,17 @@ textarea:focus-visible {
 .code-toolbar > div { align-items: center; display: flex; gap: 7px; }
 .code-toolbar strong { font-size: 10px; }
 .code-toolbar span { color: #95a09b; font-family: var(--font-geist-mono), monospace; font-size: 8px; }
-.code-toolbar > div:last-child { background: #202825; border-radius: 7px; color: #b6c8bf; padding: 7px 9px; }
+.code-workspace-tabs { align-self: stretch; }
+.code-workspace-tabs button { align-items: center; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #8f9a95; cursor: pointer; display: flex; font-size: 10px; gap: 6px; padding: 0 11px; }
+.code-workspace-tabs button:hover { color: #fff; }
+.code-workspace-tabs button.active { border-bottom-color: var(--coral); color: #fff; }
+.code-workspace-tabs button span { color: #77817d; }
+.complexity-target { background: #202825; border-radius: 7px; color: #b6c8bf; padding: 7px 9px; }
+.embedded-problem { background: #fff; flex: 1; min-height: 0; position: relative; }
+.embedded-problem iframe { background: #fff; border: 0; display: block; height: 100%; position: relative; width: 100%; z-index: 1; }
+.problem-frame-loading { align-items: center; background: #f8f7f2; color: var(--muted); display: flex; flex-direction: column; gap: 9px; inset: 0; justify-content: center; padding: 30px; position: absolute; text-align: center; z-index: 2; }
+.problem-frame-loading strong { color: var(--ink); font-size: 11px; }
+.problem-frame-loading small { font-size: 9px; line-height: 1.5; max-width: 360px; }
 .code-editor { background: #111715; border: 0; color: #d8e4dd; flex: 1; font-family: var(--font-geist-mono), Consolas, monospace; font-size: 13px; line-height: 1.65; min-height: 0; outline: 0; padding: 22px; resize: none; tab-size: 2; }
 .code-footer { align-items: center; border-top: 1px solid #303835; color: #8f9a95; display: flex; justify-content: space-between; min-height: 54px; padding: 0 15px; }
 .code-footer > span { align-items: center; display: flex; font-size: 8px; gap: 5px; }
@@ -654,7 +664,8 @@ textarea:focus-visible {
   .coding-workspace { display: flex; flex-direction: column; height: auto; }
   .coding-discussion { border-right: 0; height: 650px; }
   .code-panel { min-height: 620px; }
-  .code-toolbar > div:last-child { display: none; }
+  .complexity-target { display: none !important; }
+  .embedded-problem { min-height: 510px; }
   .notes-grid { grid-template-columns: 1fr; }
   .coding-notes-modal { padding: 28px 22px; }
 }
