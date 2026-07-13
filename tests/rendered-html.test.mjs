@@ -20,7 +20,7 @@ test("server-renders the ArchRoom onboarding experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>ArchRoom — System design practice<\/title>/i);
+  assert.match(html, /<title>ArchRoom — System design and coding practice<\/title>/i);
   assert.match(html, /Think out loud/);
   assert.match(html, /Junior/);
   assert.match(html, /Senior architect/);
@@ -81,4 +81,25 @@ test("offers the full guided catalog and rubric-based mock evaluation", async ()
   assert.match(assessment, /Infrastructure/);
   assert.match(css, /\.quality-score-list/);
   assert.match(css, /\.choice-table/);
+});
+
+test("adds a NeetCode 150-only coding round with submission notes", async () => {
+  const [app, codingRoom, catalog, engine, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/neetcode-catalog.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/coding-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  const seeds = catalog.match(/\["[^"]+", "(?:Easy|Medium|Hard)", "[^"]+"\]/g) ?? [];
+  assert.equal(seeds.length, 150);
+  assert.match(app, /LeetCode round/);
+  assert.match(app, /CodingInterview/);
+  assert.match(codingRoom, /Submit & view notes/);
+  assert.match(codingRoom, /Candidate input notes/);
+  assert.match(engine, /brute-force approach is a valid baseline/);
+  assert.match(engine, /buildCodingNotes/);
+  assert.match(css, /\.coding-workspace/);
+  assert.match(css, /\.coding-notes-modal/);
 });

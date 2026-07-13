@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   CircleHelp,
   Clock3,
+  Code2,
   FileText,
   Flag,
   ExternalLink,
@@ -39,6 +40,9 @@ import {
 } from "../lib/interview-engine";
 import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/question-catalog";
 import { assessDesign } from "../lib/design-assessment";
+import { CodingInterview } from "./CodingInterview";
+
+type RoundType = "system-design" | "leetcode";
 
 type Message = {
   id: number;
@@ -85,6 +89,8 @@ export function InterviewApp() {
   const [phase, setPhase] = useState<"onboarding" | "interview">("onboarding");
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState<Level>("mid");
+  const [roundType, setRoundType] = useState<RoundType>("system-design");
+  const [codingLanguage, setCodingLanguage] = useState("Python");
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
   const [scenarioQuery, setScenarioQuery] = useState("");
@@ -134,6 +140,11 @@ export function InterviewApp() {
   }, []);
 
   const beginInterview = () => {
+    if (roundType === "leetcode") {
+      setPhase("interview");
+      startTimer();
+      return;
+    }
     const selectedScenario = sessionMode === "mock" ? pickRandomScenario() : scenario;
     setScenarioId(selectedScenario.id);
     setFrameworkStepIndex(0);
@@ -230,6 +241,7 @@ export function InterviewApp() {
     setFrameworkStepIndex(0);
     setSeconds(0);
     setShowDebrief(false);
+    setIsPaused(false);
   };
 
   const activeNudge = sessionMode === "guided"
@@ -249,13 +261,13 @@ export function InterviewApp() {
             <div className="eyebrow"><span /> Discussion-first practice</div>
             <h1>Think out loud.<br />Design under pressure.</h1>
             <p>
-              A realistic system design room where an opinionated senior architect follows your reasoning,
-              challenges your trade-offs, and reads the architecture you draw.
+              A realistic interview studio for architecture and coding rounds. The interviewer follows your reasoning,
+              challenges trade-offs, nudges optimization, and records what made the problem difficult.
             </p>
             <div className="proof-row">
-              <div><strong>40 min</strong><span>structured round</span></div>
-              <div><strong>Live</strong><span>canvas feedback</span></div>
-              <div><strong>No</strong><span>single right answer</span></div>
+              <div><strong>180</strong><span>curated problems</span></div>
+              <div><strong>Live</strong><span>adaptive probes</span></div>
+              <div><strong>Notes</strong><span>after submission</span></div>
             </div>
           </div>
 
@@ -292,32 +304,44 @@ export function InterviewApp() {
             ) : step === 2 ? (
               <div className="setup-content">
                 <button className="back-button" onClick={() => setStep(1)} type="button"><ChevronLeft size={16} /> Back</button>
-                <span className="step-kicker">Choose the experience</span>
-                <h2>How do you want to practice?</h2>
-                <p>Use a realistic mock when you’re ready to perform, or follow a coached framework while you learn.</p>
+                <span className="step-kicker">Choose the interview</span>
+                <h2>Which room are you entering?</h2>
+                <p>Practice architecture discussion or solve a coding problem from the verified NeetCode 150 catalog.</p>
 
                 <div className="mode-list">
                   <button
-                    className={`mode-option ${sessionMode === "mock" ? "selected" : ""}`}
-                    onClick={() => setSessionMode("mock")}
+                    className={`mode-option ${roundType === "system-design" ? "selected" : ""}`}
+                    onClick={() => setRoundType("system-design")}
                     type="button"
                   >
-                    <span className="mode-icon"><Mic size={20} /></span>
-                    <span><strong>Mock interview</strong><small>Minimal guidance. You lead and the architect probes your choices.</small></span>
-                    <span className="mode-check">{sessionMode === "mock" && <Check size={14} />}</span>
+                    <span className="mode-icon"><BrainCircuit size={20} /></span>
+                    <span><strong>System design</strong><small>Clarify requirements, draw the architecture, and defend trade-offs.</small></span>
+                    <span className="mode-check">{roundType === "system-design" && <Check size={14} />}</span>
                   </button>
                   <button
-                    className={`mode-option ${sessionMode === "guided" ? "selected" : ""}`}
-                    onClick={() => setSessionMode("guided")}
+                    className={`mode-option ${roundType === "leetcode" ? "selected" : ""}`}
+                    onClick={() => setRoundType("leetcode")}
                     type="button"
                   >
-                    <span className="mode-icon guided"><BookOpen size={20} /></span>
-                    <span><strong>Guided learning</strong><small>Follow a six-stage delivery framework with timing cues and question starters.</small></span>
-                    <span className="mode-check">{sessionMode === "guided" && <Check size={14} />}</span>
+                    <span className="mode-icon coding"><Code2 size={20} /></span>
+                    <span><strong>LeetCode round</strong><small>A level-calibrated problem drawn only from NeetCode 150, with optimization nudges and final notes.</small></span>
+                    <span className="mode-check">{roundType === "leetcode" && <Check size={14} />}</span>
                   </button>
                 </div>
 
-                {sessionMode === "guided" && (
+                {roundType === "system-design" ? (
+                  <div className="practice-style">
+                    <span>Practice style</span>
+                    <div>
+                      <button className={sessionMode === "mock" ? "selected" : ""} onClick={() => setSessionMode("mock")} type="button"><Mic size={13} /> Mock interview</button>
+                      <button className={sessionMode === "guided" ? "selected" : ""} onClick={() => setSessionMode("guided")} type="button"><BookOpen size={13} /> Guided learning</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="coding-mode-note"><Code2 size={15} /><span><strong>Correct baseline first</strong>Brute force is accepted; the interviewer then nudges you toward the expected optimal complexity.</span></div>
+                )}
+
+                {roundType === "system-design" && sessionMode === "guided" && (
                   <div className="framework-preview">
                     <div><BookOpen size={15} /><strong>Delivery path</strong><span>about 40 minutes</span></div>
                     <ol>
@@ -337,7 +361,7 @@ export function InterviewApp() {
               <div className="setup-content">
                 <button className="back-button" onClick={() => setStep(2)} type="button"><ChevronLeft size={16} /> Back</button>
                 <span className="step-kicker">Personalize the round</span>
-                <h2>{sessionMode === "mock" ? "Add context. We’ll pick the problem." : "Add context, then pick a problem."}</h2>
+                <h2>{roundType === "leetcode" ? "Set up your coding round." : sessionMode === "mock" ? "Add context. We’ll pick the problem." : "Add context, then pick a problem."}</h2>
                 <p>Your resume helps frame follow-ups around your background. It never leaves this browser session.</p>
 
                 <label className={`resume-drop ${resumeName ? "has-file" : ""}`}>
@@ -356,7 +380,21 @@ export function InterviewApp() {
                   />
                 </label>
 
-                {sessionMode === "mock" ? (
+                {roundType === "leetcode" ? (
+                  <>
+                    <label className="language-select">
+                      <span>Preferred coding language</span>
+                      <select onChange={(event) => setCodingLanguage(event.target.value)} value={codingLanguage}>
+                        {['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'C#', 'Go', 'Rust'].map((language) => <option key={language}>{language}</option>)}
+                      </select>
+                    </label>
+                    <div className="random-prompt-card coding-random-card">
+                      <Code2 size={19} />
+                      <span><strong>Random challenge from NeetCode 150</strong><small>The difficulty is calibrated to your experience level. Notes capture your approaches, pitfalls, and challenges when you submit.</small></span>
+                    </div>
+                    <a className="neetcode-source" href="https://neetcode.io/practice/practice/neetcode150" target="_blank" rel="noreferrer">Verified NeetCode 150 catalog <ExternalLink size={10} /></a>
+                  </>
+                ) : sessionMode === "mock" ? (
                   <div className="random-prompt-card">
                     <Sparkles size={19} />
                     <span><strong>Random challenge from 30 problems</strong><small>The prompt is revealed when you enter the room, so the mock stays realistic.</small></span>
@@ -384,7 +422,7 @@ export function InterviewApp() {
                 )}
 
                 <button className="primary-action" onClick={beginInterview} type="button">
-                  Enter the interview room <ArrowRight size={18} />
+                  Enter the {roundType === "leetcode" ? "coding" : "interview"} room <ArrowRight size={18} />
                 </button>
               </div>
             )}
@@ -394,6 +432,20 @@ export function InterviewApp() {
           <span>CLARIFY</span><i /> <span>ESTIMATE</span><i /> <span>DESIGN</span><i /> <span>CHALLENGE</span><i /> <span>ITERATE</span>
         </div>
       </main>
+    );
+  }
+
+  if (roundType === "leetcode") {
+    return (
+      <CodingInterview
+        isPaused={isPaused}
+        language={codingLanguage}
+        level={level}
+        onFinish={stopTimer}
+        onReset={resetInterview}
+        onTogglePause={togglePause}
+        seconds={seconds}
+      />
     );
   }
 
