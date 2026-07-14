@@ -38,6 +38,38 @@ npm run dev
 Development and production both use the standard Next.js runtime. Production
 builds use Next.js standalone output for portable deployment.
 
+## Desktop executables
+
+InterviewLab can run as a self-contained desktop application. The executable
+starts its own server on a random loopback-only port, so no Docker, Node.js
+installation, hosted backend, or inbound network access is required. Internet
+access is still required when you ask an external AI provider for a response.
+
+GitHub release builds include:
+
+| Operating system | Architectures | Downloads |
+| --- | --- | --- |
+| Windows | x64 | Installer `.exe` and portable `.exe` |
+| macOS | Apple Silicon and Intel | `.dmg` and `.zip` |
+| Linux | x64 | Portable `.AppImage` and Debian/Ubuntu `.deb` |
+
+Download a published build from the repository's **Releases** page. Community
+builds are currently unsigned, so Windows SmartScreen or macOS Gatekeeper may
+show an unknown-publisher warning. Only use artifacts published by this
+repository. Signing can be added later without changing the runtime design.
+
+To build an executable for the operating system you are currently using:
+
+```bash
+npm ci
+npm run desktop:dist
+```
+
+Artifacts are written to `dist-desktop`. Run `npm run desktop:run` to build and
+launch the desktop app locally without creating an installer. The release
+workflow builds every supported operating system on its native runner; pushing
+a version tag such as `v0.1.0` publishes all artifacts to a GitHub release.
+
 ## Self-host with Docker
 
 Docker is the recommended portable deployment path. No server-side AI-provider

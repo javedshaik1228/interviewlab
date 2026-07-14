@@ -1,0 +1,9 @@
+{
+  "name": "interviewlab-desktop",
+  "version": "0.1.0",
+  "description": "Local desktop runtime for InterviewLab.",
+  "main": "main.mjs",
+  "author": "InterviewLab contributors",
+  "license": "MIT",
+  "type": "module"
+}

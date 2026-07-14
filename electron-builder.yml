@@ -1,0 +1,58 @@
+appId: io.github.javedshaik1228.interviewlab
+productName: InterviewLab
+copyright: Copyright © 2026 InterviewLab contributors
+electronVersion: 43.1.0
+asar: true
+npmRebuild: false
+afterPack: desktop/after-pack.cjs
+
+directories:
+  output: ../dist-desktop
+
+files:
+  - main.mjs
+  - package.json
+
+extraResources:
+  - from: ../.next/standalone
+    to: app
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  artifactName: "${productName}-Setup-${version}-Windows-${arch}.${ext}"
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+portable:
+  artifactName: "${productName}-Portable-${version}-Windows-${arch}.${ext}"
+
+mac:
+  target:
+    - target: dmg
+    - target: zip
+  artifactName: "${productName}-${version}-macOS-${arch}.${ext}"
+  category: public.app-category.developer-tools
+
+linux:
+  target:
+    - target: AppImage
+    - target: deb
+  artifactName: "${productName}-${version}-Linux-${arch}.${ext}"
+  category: Education
+  synopsis: Local system-design and coding interview practice
+  description: Discussion-first system-design and coding interview practice with bring-your-own provider keys.
+
+publish: null
