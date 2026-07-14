@@ -1,5 +1,8 @@
 # InterviewLab
 
+[![CI](https://github.com/javedshaik1228/interviewlab/actions/workflows/ci.yml/badge.svg)](https://github.com/javedshaik1228/interviewlab/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 InterviewLab is a discussion-first technical interview practice studio. Candidates
 choose their target level and practice either system design or NeetCode 150
 coding rounds while an adaptive interviewer challenges their reasoning.
@@ -26,13 +29,14 @@ and is used automatically if an external provider fails.
 Requires Node.js 22.13 or newer.
 
 ```bash
-npm install
+git clone https://github.com/javedshaik1228/interviewlab.git
+cd interviewlab
+npm ci
 npm run dev
 ```
 
-The default build is a standard Next.js standalone build. The older Sites
-adapter remains available through the `dev:sites`, `build:sites`, and
-`start:sites` scripts, but it is not required for self-hosting.
+Development and production both use the standard Next.js runtime. Production
+builds use Next.js standalone output for portable deployment.
 
 ## Self-host with Docker
 
@@ -74,3 +78,20 @@ Run the full validation suite with:
 npm test
 npm run lint
 ```
+
+## Contributing
+
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+before proposing a change, and report vulnerabilities according to
+[SECURITY.md](SECURITY.md).
+
+## Third-party services and content
+
+InterviewLab is an independent project and is not affiliated with or endorsed
+by NeetCode, Hello Interview, Excalidraw, OpenAI, Anthropic, Google, or their
+respective owners. Third-party names and links identify compatible services or
+learning resources; their content, trademarks, and terms remain their owners'.
+
+## License
+
+InterviewLab's source code is available under the [MIT License](LICENSE).

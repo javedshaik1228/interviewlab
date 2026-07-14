@@ -1,17 +1,61 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { createServer } from "node:net";
+import { fileURLToPath } from "node:url";
+import { after, before, test } from "node:test";
+import { once } from "node:events";
+
+let appServer;
+let baseUrl;
+let serverOutput = "";
+
+async function availablePort() {
+  const probe = createServer();
+  probe.listen(0, "127.0.0.1");
+  await once(probe, "listening");
+  const address = probe.address();
+  assert.ok(address && typeof address === "object");
+  await new Promise((resolve, reject) => probe.close((error) => (error ? reject(error) : resolve())));
+  return address.port;
+}
+
+before(async () => {
+  const port = await availablePort();
+  baseUrl = `http://127.0.0.1:${port}`;
+  appServer = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", SITE_URL: "http://localhost:3000" },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  appServer.stdout.on("data", (chunk) => { serverOutput += chunk; });
+  appServer.stderr.on("data", (chunk) => { serverOutput += chunk; });
+
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (appServer.exitCode !== null) throw new Error(`Next.js exited before startup.\n${serverOutput}`);
+    try {
+      const response = await fetch(`${baseUrl}/api/health`);
+      if (response.ok) return;
+    } catch {
+      // The server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Timed out waiting for Next.js.\n${serverOutput}`);
+});
+
+after(async () => {
+  if (!appServer || appServer.exitCode !== null) return;
+  appServer.kill();
+  await Promise.race([once(appServer, "exit"), new Promise((resolve) => setTimeout(resolve, 5000))]);
+});
 
 async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+  return fetch(`${baseUrl}/`, { headers: { accept: "text/html" } });
 }
 
 test("server-renders the InterviewLab onboarding experience", async () => {
@@ -33,17 +77,17 @@ test("server-renders the InterviewLab onboarding experience", async () => {
 });
 
 test("keeps Excalidraw's React 19 integration loop-safe", async () => {
-  const [board, tunnel, viteConfig] = await Promise.all([
+  const [board, tunnel, nextConfig] = await Promise.all([
     readFile(new URL("../app/components/DiagramBoard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/react19-tunnel.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(board, /lastSignalFingerprint/);
   assert.match(board, /fingerprint === lastSignalFingerprint\.current/);
   assert.match(tunnel, /useSyncExternalStore/);
   assert.match(tunnel, /const registeredEntry = entry\.current/);
-  assert.match(viteConfig, /"tunnel-rat": fileURLToPath/);
+  assert.match(nextConfig, /"tunnel-rat": tunnelRatCompat/);
 });
 
 test("includes the guided delivery framework learning mode", async () => {
@@ -146,18 +190,11 @@ test("supports session-only interviewer provider choice with safe fallback", asy
 });
 
 test("rejects incomplete provider requests without caching them", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("provider-test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  const response = await worker.fetch(
-    new Request("http://localhost/api/interviewer", {
+  const response = await fetch(`${baseUrl}/api/interviewer`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ provider: { id: "openai", apiKey: "", model: "" } }),
-    }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+    });
 
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("cache-control"), "no-store");
@@ -196,7 +233,7 @@ test("ships a portable standalone deployment", async () => {
 
   assert.equal(packageJson.scripts.build, "next build --webpack");
   assert.equal(packageJson.scripts.start, "next start");
-  assert.match(packageJson.scripts["build:sites"], /run-vinext\.mjs build/);
+  assert.equal(packageJson.scripts["build:sites"], undefined);
   assert.match(nextConfig, /output:\s*"standalone"/);
   assert.match(dockerfile, /HEALTHCHECK/);
   assert.match(dockerfile, /node",\s*"server\.js"/);

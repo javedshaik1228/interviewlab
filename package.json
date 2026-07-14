@@ -1,7 +1,16 @@
 {
-  "name": "interviewlab-technical-interviewer",
+  "name": "interviewlab",
   "version": "0.1.0",
+  "description": "A self-hosted system-design and coding interview practice studio.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/javedshaik1228/interviewlab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/javedshaik1228/interviewlab/issues"
+  },
   "engines": {
     "node": ">=22.13.0"
   },
@@ -9,36 +18,32 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "dev:sites": "node scripts/run-vinext.mjs dev",
-    "build:sites": "node scripts/run-vinext.mjs build",
-    "start:sites": "node scripts/run-vinext.mjs start",
-    "test": "npm run build && npm run test:sites",
-    "test:sites": "npm run build:sites && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
+    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "audit:prod": "npm audit --omit=dev"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
     "lucide-react": "^1.24.0",
-    "next": "16.2.6",
+    "next": "16.2.10",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "0.5.26",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
-    "react-server-dom-webpack": "19.2.6",
+    "eslint-config-next": "16.2.10",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3",
-    "vinext": "0.0.50",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "lodash-es@<=4.17.23": "4.18.1",
+    "nanoid@<3.3.8": "3.3.16",
+    "nanoid@>=4.0.0 <5.0.9": "5.1.16",
+    "postcss@<8.5.10": "8.5.19"
   },
   "type": "module"
 }
