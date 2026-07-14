@@ -20,8 +20,9 @@ async function availablePort() {
 }
 
 test("defines self-contained desktop installers for Windows, macOS, and Linux", async () => {
-  const [packageText, launcher, preparer, afterPacker, builderConfig, workflow, readme, gitignore, npmrc] = await Promise.all([
+  const [packageText, desktopPackageText, launcher, preparer, afterPacker, builderConfig, workflow, readme, gitignore, npmrc] = await Promise.all([
     readFile(path.join(projectRoot, "package.json"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/main.mjs"), "utf8"),
     readFile(path.join(projectRoot, "scripts/prepare-desktop.mjs"), "utf8"),
     readFile(path.join(projectRoot, "desktop/after-pack.cjs"), "utf8"),
@@ -32,6 +33,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
     readFile(path.join(projectRoot, ".npmrc"), "utf8"),
   ]);
   const packageJson = JSON.parse(packageText);
+  const desktopPackageJson = JSON.parse(desktopPackageText);
 
   assert.equal(packageJson.main, "desktop/main.mjs");
   assert.match(packageJson.scripts["desktop:prepare"], /prepare-desktop\.mjs/);
@@ -39,6 +41,8 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(packageJson.scripts["desktop:dist"], /electron-builder/);
   assert.match(packageJson.devDependencies.electron, /^43\./);
   assert.match(packageJson.devDependencies["electron-builder"], /^26\./);
+  assert.equal(desktopPackageJson.homepage, "https://github.com/javedshaik1228/interviewlab");
+  assert.match(desktopPackageJson.author.email, /@users\.noreply\.github\.com$/);
 
   assert.match(launcher, /ELECTRON_RUN_AS_NODE/);
   assert.match(launcher, /INTERVIEWLAB_PORT/);
