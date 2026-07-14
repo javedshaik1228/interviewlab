@@ -1,0 +1,101 @@
+name: Desktop executables
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/desktop.yml"
+      - ".npmrc"
+      - "app/**"
+      - "desktop/**"
+      - "public/**"
+      - "scripts/prepare-desktop.mjs"
+      - "electron-builder.yml"
+      - "next.config.ts"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows x64
+            os: windows-latest
+            artifact: interviewlab-windows-x64
+          - label: macOS Apple Silicon
+            os: macos-latest
+            artifact: interviewlab-macos-arm64
+          - label: macOS Intel
+            os: macos-15-intel
+            artifact: interviewlab-macos-x64
+          - label: Linux x64
+            os: ubuntu-latest
+            artifact: interviewlab-linux-x64
+
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build native executables
+        run: npm run desktop:dist
+
+      - name: Upload executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist-desktop/*.exe
+            dist-desktop/*.blockmap
+            dist-desktop/*.dmg
+            dist-desktop/*.zip
+            dist-desktop/*.AppImage
+            dist-desktop/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download executables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: interviewlab-*
+          path: dist-desktop
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist-desktop
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist-desktop/* --generate-notes --title "InterviewLab $GITHUB_REF_NAME"

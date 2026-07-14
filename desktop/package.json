@@ -1,0 +1,13 @@
+{
+  "name": "interviewlab-desktop",
+  "version": "0.1.0",
+  "description": "Local desktop runtime for InterviewLab.",
+  "main": "main.mjs",
+  "author": {
+    "name": "InterviewLab contributors",
+    "email": "javedshaik1228@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/javedshaik1228/interviewlab",
+  "license": "MIT",
+  "type": "module"
+}
