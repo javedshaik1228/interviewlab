@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import type { Level } from "../lib/interview-engine";
-import { buildCodingNotes, CodingMessage, createCodingNudge, createCodingReply } from "../lib/coding-engine";
+import { buildCodingNotes, CodingMessage, createCodingNudge } from "../lib/coding-engine";
 import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
 import { requestInterviewerTurn } from "../lib/provider-client";
 import { getProviderLabel, ProviderConnection } from "../lib/provider-types";
@@ -71,23 +71,10 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
     event?.preventDefault();
     const value = input.trim();
     if (!value || isReplying) return;
-    const turn = messages.filter((message) => message.role === "candidate").length;
     const asksForNudge = /hint|stuck|help|brute|not sure|don.?t know/i.test(value);
     if (asksForNudge) setNudgesUsed((current) => current + 1);
     setMessages((current) => [...current, { id: messageId.current++, role: "candidate", text: value }]);
     setInput("");
-    const fallbackReply = createCodingReply(value, turn);
-    if (provider.id === "builtin") {
-      window.setTimeout(() => {
-        setMessages((current) => [...current, {
-          id: messageId.current++,
-          role: "interviewer",
-          text: fallbackReply,
-        }]);
-      }, 300);
-      return;
-    }
-
     setIsReplying(true);
     try {
       const providerReply = await requestInterviewerTurn({
@@ -111,8 +98,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
       const reason = error instanceof Error ? error.message : "Provider request failed.";
       setMessages((current) => [
         ...current,
-        { id: messageId.current++, role: "system", text: `${getProviderLabel(provider.id)} unavailable · ${reason} Continuing with the built-in interviewer.` },
-        { id: messageId.current++, role: "interviewer", text: fallbackReply },
+        { id: messageId.current++, role: "system", text: `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. Check the API key, model, and quota, then try again.` },
       ]);
     } finally {
       setIsReplying(false);

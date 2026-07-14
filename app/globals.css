@@ -416,7 +416,6 @@ textarea:focus-visible {
 .provider-credentials input { background: #fff; border: 1px solid #d6d4cc; border-radius: 7px; color: var(--ink); font-family: var(--font-geist-mono), monospace; font-size: 10px; min-height: 34px; padding: 0 9px; width: 100%; }
 .provider-credentials > p { align-items: flex-start; color: var(--muted); display: flex; font-size: 8px; gap: 5px; line-height: 1.45; margin: 1px 0 0; }
 .provider-credentials > p svg { color: var(--green); flex: 0 0 auto; margin-top: 1px; }
-.provider-built-in-note { align-items: center; background: #f1f6f2; border: 1px solid #cce0d4; border-radius: 8px; color: var(--green); display: flex; font-size: 8px; gap: 5px; margin-top: 9px; padding: 8px 9px; }
 
 .landing-marquee {
   align-items: center;

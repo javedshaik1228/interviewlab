@@ -150,7 +150,7 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(codingRoom, /<iframe/);
   assert.match(codingRoom, /src=\{problem\.sourceUrl\}/);
   assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside InterviewLab/);
-  assert.match(engine, /brute-force approach is a valid baseline/);
+  assert.match(codingRoom, /A brute-force solution is acceptable/);
   assert.match(engine, /buildCodingNotes/);
   const liveInterviewEngine = engine.split("export function buildCodingNotes")[0];
   assert.doesNotMatch(codingRoom, /problem\.(?:category|optimizationHint|targetComplexity)/);
@@ -166,27 +166,34 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.doesNotMatch(css, /\.resume-drop|\.summary-label/);
 });
 
-test("supports session-only interviewer provider choice with safe fallback", async () => {
-  const [app, codingRoom, providerTypes, providerRoute, css] = await Promise.all([
+test("requires a session-only BYO provider without a built-in fallback", async () => {
+  const [app, codingRoom, providerTypes, providerRoute, interviewEngine, codingEngine, css, readme] = await Promise.all([
     readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/provider-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/interviewer/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/interview-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/coding-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
 
   assert.match(app, /Choose your interviewer/);
   assert.match(app, /Session-only API key/);
   assert.match(app, /providerCanStart/);
   assert.match(codingRoom, /requestInterviewerTurn/);
-  assert.match(providerTypes, /"builtin" \| "openai" \| "anthropic" \| "gemini" \| "antigravity"/);
+  assert.match(providerTypes, /"openai" \| "anthropic" \| "gemini" \| "antigravity"/);
   assert.match(providerRoute, /api\.openai\.com\/v1\/responses/);
   assert.match(providerRoute, /api\.anthropic\.com\/v1\/messages/);
   assert.match(providerRoute, /generativelanguage\.googleapis\.com/);
   assert.match(providerRoute, /guardCodingReply/);
   assert.match(providerRoute, /no-store/);
+  assert.match(readme, /No server-owned provider credential\s+or fallback exists/i);
+  assert.doesNotMatch(`${app}\n${codingRoom}\n${providerTypes}\n${interviewEngine}\n${codingEngine}`, /\bbuiltin\b|built-in interviewer|createArchitectReply|createCodingReply|providerRequiresKey/i);
+  assert.doesNotMatch(providerRoute, /process\.env\.(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE).*KEY/i);
   assert.doesNotMatch(`${app}\n${codingRoom}`, /localStorage|sessionStorage/);
   assert.match(css, /\.provider-picker/);
+  assert.doesNotMatch(css, /\.provider-built-in-note/);
 });
 
 test("rejects incomplete provider requests without caching them", async () => {
@@ -195,6 +202,23 @@ test("rejects incomplete provider requests without caching them", async () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ provider: { id: "openai", apiKey: "", model: "" } }),
     });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { error: "Invalid provider request." });
+});
+
+test("rejects the removed built-in provider", async () => {
+  const response = await fetch(`${baseUrl}/api/interviewer`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      provider: { id: "builtin", apiKey: "not-applicable", model: "local-rubric" },
+      round: "system-design",
+      level: "mid",
+      messages: [{ role: "candidate", text: "Let us clarify requirements." }],
+    }),
+  });
 
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("cache-control"), "no-store");

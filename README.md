@@ -19,10 +19,10 @@ coding rounds while an adaptive interviewer challenges their reasoning.
 - Coverage tracking and an end-of-session debrief
 - Responsive interview workspace for desktop and mobile
 
-External providers use a bring-your-own-key flow. Keys remain in the active
-browser tab, are sent only through the same-origin interviewer endpoint, and
-are not persisted by the application. The built-in interviewer requires no key
-and is used automatically if an external provider fails.
+Every interviewer provider uses a bring-your-own-key flow. Keys remain in the
+active browser tab, are sent only through the same-origin interviewer endpoint,
+and are not persisted by the application. No server-owned provider credential
+or fallback exists; failed provider requests stop and ask the user to retry.
 
 ## Local development
 

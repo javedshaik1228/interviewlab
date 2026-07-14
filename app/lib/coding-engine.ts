@@ -56,36 +56,6 @@ export function createCodingNudge(nudgeIndex: number): string {
   return `Reasoning nudge: ${reasoningNudges[nudgeIndex % reasoningNudges.length]} Derive the next step from your own observations before naming a technique.`;
 }
 
-export function createCodingReply(input: string, turn: number): string {
-  const hasBruteForce = bruteForce.test(input);
-  const mentionsComplexity = complexity.test(input);
-  const mentionsEdges = edgeCases.test(input);
-  const asksForHelp = stuck.test(input);
-
-  if (hasBruteForce) {
-    return `That brute-force approach is a valid baseline; I accept it as a correct starting point. ${mentionsComplexity ? "You have named its cost." : "First, state its time and space complexity."}\n\nNow improve it without jumping to a named technique. Identify the repeated work or unused input structure, then derive and defend your next invariant.`;
-  }
-
-  if (asksForHelp) {
-    return createCodingNudge(turn);
-  }
-
-  if (!mentionsComplexity) {
-    return "I can follow the approach. Before I judge whether it is optimal, state the time and auxiliary-space complexity in terms of the input. Then argue whether a tighter bound is possible from the constraints.";
-  }
-
-  if (!mentionsEdges) {
-    return "Good. Now try to break it. Give me the smallest input, an empty or degenerate input if allowed, duplicates or repeated state, and one boundary case that exercises your invariant.";
-  }
-
-  const followUps = [
-    "Dry-run the most adversarial valid input. At which line is your invariant established and preserved?",
-    "If I removed one data structure from your solution, which complexity would regress and why?",
-    "Your complexity sounds competitive. Now make correctness explicit: initialization, maintenance, and termination.",
-  ];
-  return followUps[turn % followUps.length];
-}
-
 export function buildCodingNotes(problem: CodingProblem, messages: CodingMessage[], code: string, nudgesUsed: number): CodingNotes {
   const candidateInputs = messages.filter((message) => message.role === "candidate").map((message) => message.text.trim()).filter(Boolean);
   const discussion = candidateInputs.join(" ");

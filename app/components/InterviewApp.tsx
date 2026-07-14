@@ -27,9 +27,8 @@ import {
 import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import { BoardSignals, DiagramBoard } from "./DiagramBoard";
 import {
-  createArchitectReply,
   deliveryFramework,
-  getGuidedFollowUp,
+  detectTopics,
   getGuidedNudge,
   getNudge,
   Level,
@@ -47,7 +46,6 @@ import {
   defaultProviderModels,
   getProviderLabel,
   providerOptions,
-  providerRequiresKey,
   ProviderConnection,
   ProviderId,
 } from "../lib/provider-types";
@@ -104,9 +102,9 @@ export function InterviewApp() {
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
   const [scenarioQuery, setScenarioQuery] = useState("");
-  const [providerId, setProviderId] = useState<ProviderId>("builtin");
+  const [providerId, setProviderId] = useState<ProviderId>("openai");
   const [providerApiKey, setProviderApiKey] = useState("");
-  const [providerModel, setProviderModel] = useState(defaultProviderModels.builtin);
+  const [providerModel, setProviderModel] = useState(defaultProviderModels.openai);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [covered, setCovered] = useState<Topic[]>([]);
@@ -132,7 +130,7 @@ export function InterviewApp() {
     apiKey: providerApiKey,
     model: providerModel,
   }), [providerApiKey, providerId, providerModel]);
-  const providerCanStart = !providerRequiresKey(providerId) || (providerApiKey.trim().length >= 8 && providerModel.trim().length >= 2);
+  const providerCanStart = providerApiKey.trim().length >= 8 && providerModel.trim().length >= 2;
   const candidateText = useMemo(
     () => messages.filter((message) => message.role === "candidate").map((message) => message.text).join(" "),
     [messages],
@@ -192,23 +190,8 @@ export function InterviewApp() {
     const value = input.trim();
     if (!value || isReplying) return;
     addMessage("candidate", value);
-    const reply = createArchitectReply(value, {
-      scenario,
-      level,
-      covered,
-      turn: messages.filter((message) => message.role === "candidate").length,
-    });
-    const liveAssessment = assessDesign(`${candidateText} ${value}`, signals);
-    const replyText = sessionMode === "guided"
-      ? `${reply.text}\n\n${getGuidedFollowUp(frameworkStage)}`
-      : `${reply.text}\n\nArchitect probe: ${liveAssessment.nextProbe}`;
-    setCovered((current) => Array.from(new Set([...current, ...reply.topics])));
+    setCovered((current) => Array.from(new Set([...current, ...detectTopics(value)])));
     setInput("");
-
-    if (provider.id === "builtin") {
-      window.setTimeout(() => addMessage("architect", replyText), 350);
-      return;
-    }
 
     setIsReplying(true);
     try {
@@ -231,8 +214,7 @@ export function InterviewApp() {
       addMessage("architect", providerReply);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Provider request failed.";
-      addMessage("system", `${getProviderLabel(provider.id)} unavailable · ${reason} Continuing with the built-in interviewer.`);
-      addMessage("architect", replyText);
+      addMessage("system", `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. Check the API key, model, and quota, then try again.`);
     } finally {
       setIsReplying(false);
     }
@@ -301,7 +283,7 @@ export function InterviewApp() {
       <main className="onboarding-page">
         <header className="landing-header">
           <Brand />
-          <div className="landing-note"><ShieldCheck size={16} /> {provider.id === "builtin" ? "Private by default · your files stay in this session" : `${getProviderLabel(provider.id)} selected · interview context is sent to that API`}</div>
+          <div className="landing-note"><ShieldCheck size={16} /> {getProviderLabel(provider.id)} selected · interview context is sent only to that API</div>
         </header>
 
         <section className="onboarding-layout">
@@ -700,12 +682,10 @@ function ProviderPicker({
   providerId: ProviderId;
 }) {
   const selectedProvider = providerOptions.find((option) => option.id === providerId) ?? providerOptions[0];
-  const needsKey = providerRequiresKey(providerId);
-
   return (
     <fieldset className="provider-picker">
       <legend><Bot size={15} /> Choose your interviewer</legend>
-      <p>Select the engine for live follow-ups. The built-in interviewer remains available if an external provider fails.</p>
+      <p>Bring your own API key for live follow-ups. InterviewLab has no built-in provider or shared API budget.</p>
       <div className="provider-grid">
         {providerOptions.map((option) => (
           <button
@@ -722,35 +702,31 @@ function ProviderPicker({
       </div>
       <small className="provider-description">{selectedProvider.description}</small>
 
-      {needsKey ? (
-        <div className="provider-credentials">
-          <label>
-            <span><KeyRound size={13} /> Session-only API key</span>
-            <input
-              aria-label={`${selectedProvider.shortLabel} API key`}
-              autoComplete="off"
-              onChange={(event) => onApiKeyChange(event.target.value)}
-              placeholder="Paste your provider API key"
-              spellCheck={false}
-              type="password"
-              value={apiKey}
-            />
-          </label>
-          <label>
-            <span>Model or agent ID</span>
-            <input
-              aria-label={`${selectedProvider.shortLabel} model ID`}
-              onChange={(event) => onModelChange(event.target.value)}
-              spellCheck={false}
-              type="text"
-              value={model}
-            />
-          </label>
-          <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewLab to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
-        </div>
-      ) : (
-        <div className="provider-built-in-note"><ShieldCheck size={13} /> No account, key, or network request required.</div>
-      )}
+      <div className="provider-credentials">
+        <label>
+          <span><KeyRound size={13} /> Session-only API key</span>
+          <input
+            aria-label={`${selectedProvider.shortLabel} API key`}
+            autoComplete="off"
+            onChange={(event) => onApiKeyChange(event.target.value)}
+            placeholder="Paste your provider API key"
+            spellCheck={false}
+            type="password"
+            value={apiKey}
+          />
+        </label>
+        <label>
+          <span>Model or agent ID</span>
+          <input
+            aria-label={`${selectedProvider.shortLabel} model ID`}
+            onChange={(event) => onModelChange(event.target.value)}
+            spellCheck={false}
+            type="text"
+            value={model}
+          />
+        </label>
+        <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewLab to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
+      </div>
     </fieldset>
   );
 }

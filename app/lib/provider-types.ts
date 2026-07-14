@@ -1,4 +1,4 @@
-export type ProviderId = "builtin" | "openai" | "anthropic" | "gemini" | "antigravity";
+export type ProviderId = "openai" | "anthropic" | "gemini" | "antigravity";
 
 export type ProviderConnection = {
   id: ProviderId;
@@ -39,12 +39,6 @@ export const providerOptions: Array<{
   description: string;
 }> = [
   {
-    id: "builtin",
-    label: "InterviewLab built-in",
-    shortLabel: "Built-in",
-    description: "Private, instant, and key-free. Uses the local interview rubric.",
-  },
-  {
     id: "openai",
     label: "OpenAI / Codex models",
     shortLabel: "OpenAI",
@@ -71,17 +65,12 @@ export const providerOptions: Array<{
 ];
 
 export const defaultProviderModels: Record<ProviderId, string> = {
-  builtin: "local-rubric",
   openai: "gpt-5.4-mini",
   anthropic: "claude-sonnet-4-6",
   gemini: "gemini-3.5-flash",
   antigravity: "antigravity-preview-05-2026",
 };
 
-export function providerRequiresKey(providerId: ProviderId) {
-  return providerId !== "builtin";
-}
-
 export function getProviderLabel(providerId: ProviderId) {
-  return providerOptions.find((option) => option.id === providerId)?.shortLabel ?? "Built-in";
+  return providerOptions.find((option) => option.id === providerId)?.shortLabel ?? "External provider";
 }
