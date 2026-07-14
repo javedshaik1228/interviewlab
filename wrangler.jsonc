@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "interviewlab-provider-proxy",
+  "main": "proxy/worker.ts",
+  "compatibility_date": "2026-07-14",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGINS": "https://javedshaik1228.github.io"
+  }
+}

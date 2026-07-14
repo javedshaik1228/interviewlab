@@ -11,3 +11,4 @@ services:
       HOSTNAME: 0.0.0.0
       PORT: 3000
       SITE_URL: "${SITE_URL:-http://localhost:3000}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"

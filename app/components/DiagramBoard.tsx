@@ -1,21 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "@excalidraw/excalidraw/index.css";
 
-const Excalidraw = dynamic(
-  () => import("@excalidraw/excalidraw").then((module) => module.Excalidraw),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="canvas-loading" role="status">
-        <span className="canvas-loading-mark">IR</span>
-        <span>Preparing your architecture canvas…</span>
-      </div>
-    ),
-  },
-);
+type ExcalidrawComponent = typeof import("@excalidraw/excalidraw").Excalidraw;
 
 export type BoardSignals = {
   shapes: number;
@@ -32,7 +20,18 @@ type DiagramElement = {
 };
 
 export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals) => void }) {
+  const [Excalidraw, setExcalidraw] = useState<ExcalidrawComponent | null>(null);
   const lastSignalFingerprint = useRef("");
+
+  useEffect(() => {
+    let active = true;
+    import("@excalidraw/excalidraw").then((module) => {
+      if (active) setExcalidraw(() => module.Excalidraw);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleChange = useCallback(
     (rawElements: readonly DiagramElement[]) => {
@@ -64,20 +63,27 @@ export function DiagramBoard({ onSignals }: { onSignals: (signals: BoardSignals)
 
   return (
     <div className="excalidraw-shell" data-testid="architecture-canvas">
-      <Excalidraw
-        onChange={(elements) => handleChange(elements as readonly DiagramElement[])}
-        theme="light"
-        name="InterviewLab system design"
-        UIOptions={{
-          canvasActions: {
-            changeViewBackgroundColor: false,
-            export: { saveFileToDisk: true },
-            loadScene: true,
-            saveAsImage: true,
-            toggleTheme: false,
-          },
-        }}
-      />
+      {Excalidraw ? (
+        <Excalidraw
+          onChange={(elements) => handleChange(elements as readonly DiagramElement[])}
+          theme="light"
+          name="InterviewLab system design"
+          UIOptions={{
+            canvasActions: {
+              changeViewBackgroundColor: false,
+              export: { saveFileToDisk: true },
+              loadScene: true,
+              saveAsImage: true,
+              toggleTheme: false,
+            },
+          }}
+        />
+      ) : (
+        <div className="canvas-loading" role="status">
+          <span className="canvas-loading-mark">IR</span>
+          <span>Preparing your architecture canvas…</span>
+        </div>
+      )}
     </div>
   );
 }

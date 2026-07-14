@@ -20,9 +20,10 @@ coding rounds while an adaptive interviewer challenges their reasoning.
 - Responsive interview workspace for desktop and mobile
 
 Every interviewer provider uses a bring-your-own-key flow. Keys remain in the
-active browser tab, are sent only through the same-origin interviewer endpoint,
-and are not persisted by the application. No server-owned provider credential
-or fallback exists; failed provider requests stop and ask the user to retry.
+active browser tab, are sent only to the configured InterviewLab interviewer
+endpoint, and are not persisted by the application. No server-owned provider
+credential or fallback exists; failed provider requests stop and ask the user
+to retry.
 
 ## Local development
 
@@ -37,6 +38,44 @@ npm run dev
 
 Development and production both use the standard Next.js runtime. Production
 builds use Next.js standalone output for portable deployment.
+
+To develop the two halves of the static deployment instead, run
+`npm run dev:pages` for the frontend and `npm run dev:proxy` for the provider
+proxy. Set `NEXT_PUBLIC_INTERVIEWER_API_URL` to the proxy origin before starting
+the static frontend.
+
+## GitHub Pages + Cloudflare Worker
+
+InterviewLab can use a hybrid static deployment: GitHub Pages hosts the browser
+application, while a small Cloudflare Worker makes the provider requests that
+browsers cannot make safely or consistently on their own. The Worker contains
+no provider credentials. Each candidate still supplies a session-only key, and
+the Worker forwards it for that request without storing it.
+
+1. Install dependencies, authenticate Wrangler with your Cloudflare account,
+   and deploy the proxy:
+
+   ```bash
+   npm ci
+   npm run deploy:proxy
+   ```
+
+2. Copy the resulting HTTPS Worker origin, such as
+   `https://interviewlab-provider-proxy.example.workers.dev`.
+3. In GitHub, create an Actions repository variable named
+   `INTERVIEWER_API_URL` whose value is that Worker origin. This is a public URL,
+   not a secret.
+4. In `wrangler.jsonc`, set `ALLOWED_ORIGINS` to the exact Pages origin. For this
+   repository it is `https://javedshaik1228.github.io`. Add localhost origins
+   only when needed for development, then deploy the Worker again.
+5. In the repository Pages settings, select **GitHub Actions** as the source.
+   A push to `main` then runs the Pages workflow and publishes
+   `https://javedshaik1228.github.io/interviewlab/`.
+
+The Pages workflow refuses to build without `INTERVIEWER_API_URL`, and the
+Worker rejects browser requests from origins not listed in `ALLOWED_ORIGINS`.
+Because user API keys pass through the proxy, keep both origins on HTTPS and do
+not enable request-body logging.
 
 ## Self-host with Docker
 

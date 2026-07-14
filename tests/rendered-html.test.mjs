@@ -28,7 +28,12 @@ before(async () => {
     ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)],
     {
       cwd: fileURLToPath(new URL("..", import.meta.url)),
-      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", SITE_URL: "http://localhost:3000" },
+      env: {
+        ...process.env,
+        NEXT_TELEMETRY_DISABLED: "1",
+        SITE_URL: "http://localhost:3000",
+        ALLOWED_ORIGINS: baseUrl,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
@@ -167,30 +172,32 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
 });
 
 test("requires a session-only BYO provider without a built-in fallback", async () => {
-  const [app, codingRoom, providerTypes, providerRoute, interviewEngine, codingEngine, css, readme] = await Promise.all([
+  const [app, codingRoom, providerTypes, providerRoute, providerService, interviewEngine, codingEngine, css, readme] = await Promise.all([
     readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/provider-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/interviewer/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/interviewer-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/interview-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/coding-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
+  const providerServer = `${providerRoute}\n${providerService}`;
 
   assert.match(app, /Choose your interviewer/);
   assert.match(app, /Session-only API key/);
   assert.match(app, /providerCanStart/);
   assert.match(codingRoom, /requestInterviewerTurn/);
   assert.match(providerTypes, /"openai" \| "anthropic" \| "gemini" \| "antigravity"/);
-  assert.match(providerRoute, /api\.openai\.com\/v1\/responses/);
-  assert.match(providerRoute, /api\.anthropic\.com\/v1\/messages/);
-  assert.match(providerRoute, /generativelanguage\.googleapis\.com/);
-  assert.match(providerRoute, /guardCodingReply/);
-  assert.match(providerRoute, /no-store/);
-  assert.match(readme, /No server-owned provider credential\s+or fallback exists/i);
+  assert.match(providerServer, /api\.openai\.com\/v1\/responses/);
+  assert.match(providerServer, /api\.anthropic\.com\/v1\/messages/);
+  assert.match(providerServer, /generativelanguage\.googleapis\.com/);
+  assert.match(providerServer, /guardCodingReply/);
+  assert.match(providerServer, /no-store/);
+  assert.match(readme, /No server-owned provider\s+credential\s+or\s+fallback exists/i);
   assert.doesNotMatch(`${app}\n${codingRoom}\n${providerTypes}\n${interviewEngine}\n${codingEngine}`, /\bbuiltin\b|built-in interviewer|createArchitectReply|createCodingReply|providerRequiresKey/i);
-  assert.doesNotMatch(providerRoute, /process\.env\.(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE).*KEY/i);
+  assert.doesNotMatch(providerServer, /process\.env\.(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE).*KEY/i);
   assert.doesNotMatch(`${app}\n${codingRoom}`, /localStorage|sessionStorage/);
   assert.match(css, /\.provider-picker/);
   assert.doesNotMatch(css, /\.provider-built-in-note/);
@@ -225,6 +232,33 @@ test("rejects the removed built-in provider", async () => {
   assert.deepEqual(await response.json(), { error: "Invalid provider request." });
 });
 
+test("permits only configured origins to call the interviewer proxy", async () => {
+  const allowed = await fetch(`${baseUrl}/api/interviewer`, {
+    method: "OPTIONS",
+    headers: {
+      origin: baseUrl,
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "content-type",
+    },
+  });
+
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get("access-control-allow-origin"), baseUrl);
+  assert.match(allowed.headers.get("access-control-allow-methods") ?? "", /POST/);
+  assert.match(allowed.headers.get("vary") ?? "", /\bOrigin\b/);
+
+  const denied = await fetch(`${baseUrl}/api/interviewer`, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://evil.example",
+      "access-control-request-method": "POST",
+    },
+  });
+
+  assert.equal(denied.status, 403);
+  assert.equal(denied.headers.get("access-control-allow-origin"), null);
+});
+
 test("keeps interview workspaces clean with compact problems and dockable chat", async () => {
   const [app, codingRoom, css] = await Promise.all([
     readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
@@ -255,7 +289,8 @@ test("ships a portable standalone deployment", async () => {
   ]);
   const packageJson = JSON.parse(packageText);
 
-  assert.equal(packageJson.scripts.build, "next build --webpack");
+  assert.equal(packageJson.scripts.build, "npm run typecheck && next build --webpack");
+  assert.equal(packageJson.scripts.typecheck, "tsc --noEmit");
   assert.equal(packageJson.scripts.start, "next start");
   assert.equal(packageJson.scripts["build:sites"], undefined);
   assert.match(nextConfig, /output:\s*"standalone"/);
@@ -269,4 +304,34 @@ test("ships a portable standalone deployment", async () => {
   assert.match(healthRoute, /status:\s*"ok"/);
   assert.match(readme, /Self-host with Docker/);
   assert.match(gitignore, /!\.env\.example/);
+});
+
+test("ships a GitHub Pages frontend with a remote provider proxy", async () => {
+  const [packageText, viteConfig, staticEntry, providerClient, workflow, worker, wrangler, readme] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../vite.pages.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../static/main.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/provider-client.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"),
+    readFile(new URL("../proxy/worker.ts", import.meta.url), "utf8"),
+    readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+  ]);
+  const packageJson = JSON.parse(packageText);
+
+  assert.match(packageJson.scripts["build:pages"], /vite build/);
+  assert.match(packageJson.scripts["deploy:proxy"], /wrangler .*deploy/);
+  assert.match(viteConfig, /NEXT_PUBLIC_INTERVIEWER_API_URL/);
+  assert.match(viteConfig, /GITHUB_REPOSITORY/);
+  assert.match(staticEntry, /InterviewApp/);
+  assert.match(providerClient, /NEXT_PUBLIC_INTERVIEWER_API_URL/);
+  assert.match(workflow, /actions\/configure-pages@v5/);
+  assert.match(workflow, /actions\/upload-pages-artifact@v4/);
+  assert.match(workflow, /actions\/deploy-pages@v4/);
+  assert.match(workflow, /INTERVIEWER_API_URL/);
+  assert.match(worker, /ALLOWED_ORIGINS/);
+  assert.match(worker, /\/api\/health/);
+  assert.match(wrangler, /interviewlab-provider-proxy/);
+  assert.match(readme, /GitHub Pages \+ Cloudflare Worker/);
+  assert.match(readme, /repository variable.*INTERVIEWER_API_URL/is);
 });

@@ -16,11 +16,18 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev:pages": "vite --config vite.pages.config.ts",
+    "dev:proxy": "wrangler --config wrangler.jsonc dev",
+    "build": "npm run typecheck && next build --webpack",
+    "build:pages": "vite build --config vite.pages.config.ts",
+    "build:proxy": "wrangler --config wrangler.jsonc deploy --dry-run --outdir dist-proxy",
     "start": "next start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "audit:prod": "npm audit --omit=dev"
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-pages --ignore-pattern dist-proxy --ignore-pattern .next",
+    "typecheck": "tsc --noEmit",
+    "audit:prod": "npm audit --omit=dev",
+    "validate:pages-env": "node scripts/validate-pages-env.mjs",
+    "deploy:proxy": "wrangler --config wrangler.jsonc deploy"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
@@ -37,7 +44,9 @@
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "8.1.4",
+    "wrangler": "4.110.0"
   },
   "overrides": {
     "lodash-es@<=4.17.23": "4.18.1",
