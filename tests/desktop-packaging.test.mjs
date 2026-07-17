@@ -104,6 +104,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(workflow, /actions\/upload-artifact@v6/);
   assert.match(workflow, /actions\/download-artifact@v7/);
   assert.match(workflow, /set-release-version\.mjs/);
+  assert.match(workflow, /npm run desktop:dist -- --publish never/);
   assert.match(workflow, /dist-desktop\/latest\*\.yml/);
   assert.match(workflow, /dist-desktop\/\*\.exe/);
   assert.match(workflow, /dist-desktop\/\*\.dmg/);
