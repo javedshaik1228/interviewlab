@@ -12,7 +12,7 @@ directories:
 
 files:
   - main.mjs
-  - preload.mjs
+  - preload.cjs
   - neetcode-workspace.mjs
   - update-controller.mjs
   - package.json

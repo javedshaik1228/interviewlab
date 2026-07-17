@@ -9,7 +9,7 @@ import { createUpdateController } from "./update-controller.mjs";
 
 const appId = "io.github.javedshaik1228.interviewlab";
 const desktopIcon = fileURLToPath(new URL("./build/icon.png", import.meta.url));
-const desktopPreload = fileURLToPath(new URL("./preload.mjs", import.meta.url));
+const desktopPreload = fileURLToPath(new URL("./preload.cjs", import.meta.url));
 const loopbackHost = "127.0.0.1";
 const latestReleaseUrl = "https://github.com/javedshaik1228/interviewlab/releases/latest";
 const smokeTest = process.env.INTERVIEWLAB_SMOKE_TEST === "1";

@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { once } from "node:events";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -24,7 +25,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
     readFile(path.join(projectRoot, "package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/main.mjs"), "utf8"),
-    readFile(path.join(projectRoot, "desktop/preload.mjs"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/preload.cjs"), "utf8"),
     readFile(path.join(projectRoot, "desktop/update-controller.mjs"), "utf8"),
     readFile(path.join(projectRoot, "scripts/prepare-desktop.mjs"), "utf8"),
     readFile(path.join(projectRoot, "desktop/after-pack.cjs"), "utf8"),
@@ -65,10 +66,12 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(launcher, /neetcodeChannels\.open/);
   assert.match(launcher, /neetcodeWorkspace\.open/);
   assert.match(launcher, /new URL\("\.\/build\/icon\.png", import\.meta\.url\)/);
-  assert.match(launcher, /new URL\("\.\/preload\.mjs", import\.meta\.url\)/);
+  assert.match(launcher, /new URL\("\.\/preload\.cjs", import\.meta\.url\)/);
   assert.match(launcher, /createUpdateController/);
   assert.match(launcher, /ipcMain\.handle/);
   assert.match(preload, /contextBridge\.exposeInMainWorld\("interviewLabDesktop"/);
+  assert.match(preload, /require\("electron"\)/);
+  assert.doesNotMatch(preload, /^\s*import\s/m);
   assert.match(preload, /ipcRenderer\.invoke/);
   assert.match(preload, /openNeetCodeWorkspace/);
   assert.match(updaterController, /update-downloaded/);
@@ -89,7 +92,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(builderConfig, /buildResources:\s*build/);
   assert.equal(builderConfig.match(/^\s+icon:\s*icon\.svg$/gm)?.length, 3);
   assert.match(builderConfig, /- build\/icon\.png/);
-  assert.match(builderConfig, /- preload\.mjs/);
+  assert.match(builderConfig, /- preload\.cjs/);
   assert.match(builderConfig, /- neetcode-workspace\.mjs/);
   assert.match(builderConfig, /- update-controller\.mjs/);
   assert.match(builderConfig, /provider:\s*github/);
@@ -129,6 +132,46 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(readme, /Windows.*macOS.*Linux/is);
   assert.match(gitignore, /dist-desktop/);
   assert.match(npmrc, /^legacy-peer-deps=true\s*$/m);
+});
+
+test("the sandbox-compatible preload exposes the desktop bridge", async () => {
+  const preload = await readFile(path.join(projectRoot, "desktop/preload.cjs"), "utf8");
+  const invocations = [];
+  let exposedName = "";
+  let exposedApi = null;
+
+  runInNewContext(preload, {
+    require(specifier) {
+      assert.equal(specifier, "electron");
+      return {
+        contextBridge: {
+          exposeInMainWorld(name, api) {
+            exposedName = name;
+            exposedApi = api;
+          },
+        },
+        ipcRenderer: {
+          invoke(...args) {
+            invocations.push(args);
+            return Promise.resolve(true);
+          },
+          on() {},
+          removeListener() {},
+        },
+      };
+    },
+  });
+
+  assert.equal(exposedName, "interviewLabDesktop");
+  assert.equal(typeof exposedApi.openNeetCodeWorkspace, "function");
+  assert.equal(
+    await exposedApi.openNeetCodeWorkspace("https://neetcode.io/problems/two-integer-sum/question"),
+    true,
+  );
+  assert.deepEqual(invocations, [[
+    "interviewlab:neetcode:open",
+    "https://neetcode.io/problems/two-integer-sum/question",
+  ]]);
 });
 
 test("the prepared standalone runtime serves the local desktop application", async (t) => {

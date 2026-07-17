@@ -1,4 +1,5 @@
-import { contextBridge, ipcRenderer } from "electron";
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { contextBridge, ipcRenderer } = require("electron");
 
 const channels = {
   check: "interviewlab:update:check",
