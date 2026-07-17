@@ -116,6 +116,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$RELEASE_TAG" dist-desktop/* \
+            --repo "$GITHUB_REPOSITORY" \
             --generate-notes \
             --target "$GITHUB_SHA" \
             --title "InterviewLab $RELEASE_TAG"
