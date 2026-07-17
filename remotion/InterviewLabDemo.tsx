@@ -1,3 +1,6 @@
+import { loadFont as loadBodoniModa } from "@remotion/google-fonts/BodoniModa";
+import { loadFont as loadManrope } from "@remotion/google-fonts/Manrope";
+import { Audio } from "@remotion/media";
 import type { CSSProperties, ReactNode } from "react";
 import {
   AbsoluteFill,
@@ -8,6 +11,17 @@ import {
   staticFile,
   useCurrentFrame,
 } from "remotion";
+import { MUSIC_FILE, PRODUCT_DEMO_DURATION_FRAMES, VOICEOVER_SCENES } from "./audio-plan";
+
+const { fontFamily: editorialFontFamily } = loadBodoniModa("normal", {
+  weights: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+});
+
+const { fontFamily: sansFontFamily } = loadManrope("normal", {
+  weights: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+});
 
 const colors = {
   cream: "#f5f1e8",
@@ -22,8 +36,8 @@ const colors = {
   dark: "#101c1b",
 };
 
-const sans = "Arial, Helvetica, sans-serif";
-const serif = "Georgia, 'Times New Roman', serif";
+const sans = sansFontFamily;
+const serif = editorialFontFamily;
 const mono = "'Courier New', Courier, monospace";
 
 type ProductDemoProps = {
@@ -681,6 +695,38 @@ function FinalScene({ repositoryUrl }: ProductDemoProps) {
 export function InterviewLabDemo({ repositoryUrl }: ProductDemoProps) {
   return (
     <AbsoluteFill style={{ background: colors.cream }}>
+      <Audio
+        loop
+        src={staticFile(MUSIC_FILE)}
+        volume={(frame) =>
+          interpolate(
+            frame,
+            [0, 30, PRODUCT_DEMO_DURATION_FRAMES - 60, PRODUCT_DEMO_DURATION_FRAMES],
+            [0, 0.21, 0.21, 0],
+            clamp,
+          )
+        }
+      />
+      {VOICEOVER_SCENES.map((scene) => (
+        <Sequence
+          durationInFrames={scene.maxDurationFrames}
+          from={scene.startFrame}
+          key={scene.id}
+          layout="none"
+        >
+          <Audio
+            src={staticFile(scene.file)}
+            volume={(frame) =>
+              interpolate(
+                frame,
+                [0, 3, scene.maxDurationFrames - 8, scene.maxDurationFrames],
+                [0, 1, 1, 0],
+                clamp,
+              )
+            }
+          />
+        </Sequence>
+      ))}
       <Sequence durationInFrames={150}><HeroScene /></Sequence>
       <Sequence from={150} durationInFrames={180}><OverviewScene /></Sequence>
       <Sequence from={330} durationInFrames={180}><SetupScene /></Sequence>

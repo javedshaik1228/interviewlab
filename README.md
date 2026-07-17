@@ -102,6 +102,19 @@ npm run video:render
 The render is written to `outputs/interviewlab-product-demo.mp4`. Use
 `npm run video:preview` for a representative still frame.
 
+The demo uses an original, locally generated instrumental track and a
+scene-timed ElevenLabs narration. Put `ELEVENLABS_API_KEY` in the ignored
+`.env.local` file, then regenerate both tracks before rendering:
+
+```bash
+npm run video:audio
+npm run video:render
+```
+
+`ELEVENLABS_VOICE_ID` is optional; the default is ElevenLabs' warm Rachel
+voice. Run `npm run video:audio:music` when only the deterministic backing
+track needs to be rebuilt.
+
 ## Self-host with Docker
 
 Docker is the recommended portable deployment path. Host CLI agents are not
