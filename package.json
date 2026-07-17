@@ -24,7 +24,10 @@
     "desktop:run": "npm run desktop:deps && npm run desktop:prepare && electron .",
     "desktop:pack": "npm run desktop:deps && npm run desktop:prepare && electron-builder --projectDir desktop --config ../electron-builder.yml --dir",
     "desktop:dist": "npm run desktop:deps && npm run desktop:prepare && electron-builder --projectDir desktop --config ../electron-builder.yml",
-    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/desktop-updater.test.mjs tests/local-agent-runtime.test.mjs tests/rendered-html.test.mjs",
+    "video:studio": "remotion studio remotion/index.ts",
+    "video:render": "remotion render remotion/index.ts InterviewLabProductDemo outputs/interviewlab-product-demo.mp4",
+    "video:preview": "remotion still remotion/index.ts InterviewLabProductDemo outputs/interviewlab-product-demo-preview.png --frame=680",
+    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/desktop-updater.test.mjs tests/local-agent-runtime.test.mjs tests/remotion-demo.test.mjs tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-desktop --ignore-pattern .next",
     "audit:prod": "npm audit --omit=dev"
   },
@@ -36,16 +39,19 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@remotion/cli": "4.0.490",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "eslint": "9.39.4",
-    "eslint-config-next": "16.2.10",
     "electron": "43.1.0",
     "electron-builder": "26.15.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.10",
+    "remotion": "4.0.490",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "zod": "4.3.6"
   },
   "overrides": {
     "lodash-es@<=4.17.23": "4.18.1",

@@ -88,6 +88,20 @@ workflow builds every supported operating system on its native runner; pushing
 a version tag such as `v0.1.0` synchronizes the app version and publishes all
 installers plus their update metadata to a GitHub release.
 
+## Product demo video
+
+The 40-second, 1080p InterviewLab product demo is built with Remotion. Its
+editable composition lives in `remotion/` and uses the same
+`public/og-interviewlab.png` social graphic as the website.
+
+```bash
+npm run video:studio
+npm run video:render
+```
+
+The render is written to `outputs/interviewlab-product-demo.mp4`. Use
+`npm run video:preview` for a representative still frame.
+
 ## Self-host with Docker
 
 Docker is the recommended portable deployment path. Host CLI agents are not
