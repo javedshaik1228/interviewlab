@@ -90,6 +90,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.equal(builderConfig.match(/^\s+icon:\s*icon\.svg$/gm)?.length, 3);
   assert.match(builderConfig, /- build\/icon\.png/);
   assert.match(builderConfig, /- preload\.mjs/);
+  assert.match(builderConfig, /- neetcode-workspace\.mjs/);
   assert.match(builderConfig, /- update-controller\.mjs/);
   assert.match(builderConfig, /provider:\s*github/);
   assert.match(builderConfig, /channel:\s*latest-\$\{arch\}/);

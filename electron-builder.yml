@@ -13,6 +13,7 @@ directories:
 files:
   - main.mjs
   - preload.mjs
+  - neetcode-workspace.mjs
   - update-controller.mjs
   - package.json
   - build/icon.png
