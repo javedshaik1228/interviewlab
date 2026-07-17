@@ -26,6 +26,21 @@ export function isSecureWorkspaceNavigation(value) {
   }
 }
 
+function isNeetCodeAuthHandlerUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.origin === "https://neetcode.io" && parsed.pathname.startsWith("/__/auth/");
+  } catch {
+    return false;
+  }
+}
+
+export function isEmbeddedNeetCodeAuthRequest({ referrer, url }) {
+  if (!isSecureWorkspaceNavigation(url)) return false;
+  const referrerUrl = typeof referrer === "string" ? referrer : referrer?.url;
+  return Boolean(normalizeNeetCodeUrl(referrerUrl)) || isNeetCodeAuthHandlerUrl(url);
+}
+
 function secureWebPreferences() {
   return {
     contextIsolation: true,
@@ -33,6 +48,26 @@ function secureWebPreferences() {
     partition: NEETCODE_PARTITION,
     sandbox: true,
     webSecurity: true,
+  };
+}
+
+function embeddedAuthWindowOptions({ icon, parent }) {
+  return {
+    autoHideMenuBar: true,
+    backgroundColor: "#ffffff",
+    height: 760,
+    icon,
+    minHeight: 620,
+    minWidth: 440,
+    parent,
+    title: "Sign in to NeetCode - InterviewLab",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+    },
+    width: 520,
   };
 }
 
@@ -72,6 +107,47 @@ function protectWorkspaceWindow(window, options) {
   });
   webContents.on("did-create-window", (childWindow) => {
     protectWorkspaceWindow(childWindow, options);
+  });
+}
+
+function protectEmbeddedAuthWindow(window, options) {
+  const { webContents } = window;
+  const blockUntrustedNavigation = (event, url) => {
+    if (isSecureWorkspaceNavigation(url)) return;
+    event.preventDefault();
+  };
+  webContents.on("will-navigate", blockUntrustedNavigation);
+  webContents.on("will-redirect", blockUntrustedNavigation);
+  webContents.setWindowOpenHandler(({ url }) => {
+    if (!isSecureWorkspaceNavigation(url)) return { action: "deny" };
+    return {
+      action: "allow",
+      outlivesOpener: false,
+      overrideBrowserWindowOptions: embeddedAuthWindowOptions({
+        ...options,
+        parent: window,
+      }),
+    };
+  });
+  webContents.on("did-create-window", (childWindow) => {
+    protectEmbeddedAuthWindow(childWindow, options);
+  });
+}
+
+export function installEmbeddedNeetCodeAuthHandler({ icon, openExternal, window }) {
+  window.webContents.setWindowOpenHandler((details) => {
+    if (!isEmbeddedNeetCodeAuthRequest(details)) {
+      openExternal(details.url);
+      return { action: "deny" };
+    }
+    return {
+      action: "allow",
+      outlivesOpener: false,
+      overrideBrowserWindowOptions: embeddedAuthWindowOptions({ icon, parent: window }),
+    };
+  });
+  window.webContents.on("did-create-window", (childWindow) => {
+    protectEmbeddedAuthWindow(childWindow, { icon });
   });
 }
 

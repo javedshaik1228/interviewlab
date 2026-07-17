@@ -61,8 +61,8 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(launcher, /nodeIntegration:\s*false/);
   assert.match(launcher, /contextIsolation:\s*true/);
   assert.match(launcher, /sandbox:\s*true/);
-  assert.match(launcher, /setWindowOpenHandler/);
   assert.match(launcher, /createNeetCodeWorkspaceController/);
+  assert.match(launcher, /installEmbeddedNeetCodeAuthHandler/);
   assert.match(launcher, /neetcodeChannels\.open/);
   assert.match(launcher, /neetcodeWorkspace\.open/);
   assert.match(launcher, /new URL\("\.\/build\/icon\.png", import\.meta\.url\)/);

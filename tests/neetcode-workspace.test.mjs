@@ -3,6 +3,8 @@ import { EventEmitter } from "node:events";
 import { test } from "node:test";
 import {
   createNeetCodeWorkspaceController,
+  installEmbeddedNeetCodeAuthHandler,
+  isEmbeddedNeetCodeAuthRequest,
   isSecureWorkspaceNavigation,
   NEETCODE_PARTITION,
   normalizeNeetCodeUrl,
@@ -65,6 +67,73 @@ test("accepts only official NeetCode workspace URLs from InterviewLab", () => {
   assert.equal(isSecureWorkspaceNavigation("https://neetcode.io.evil.example/phishing"), false);
   assert.equal(isSecureWorkspaceNavigation("https://example.com/phishing"), false);
   assert.equal(isSecureWorkspaceNavigation("file:///etc/passwd"), false);
+});
+
+test("recognizes only trusted embedded NeetCode authentication popups", () => {
+  const neetcodeReferrer = { url: "https://neetcode.io/problems/two-integer-sum/question" };
+
+  assert.equal(isEmbeddedNeetCodeAuthRequest({
+    url: "https://neetcode.io/__/auth/handler?providerId=google.com",
+    referrer: { url: "" },
+  }), true);
+  assert.equal(isEmbeddedNeetCodeAuthRequest({
+    url: "https://accounts.google.com/o/oauth2/v2/auth",
+    referrer: neetcodeReferrer,
+  }), true);
+  assert.equal(isEmbeddedNeetCodeAuthRequest({
+    url: "https://github.com/login/oauth/authorize",
+    referrer: neetcodeReferrer,
+  }), true);
+  assert.equal(isEmbeddedNeetCodeAuthRequest({
+    url: "https://example.com/phishing",
+    referrer: neetcodeReferrer,
+  }), false);
+  assert.equal(isEmbeddedNeetCodeAuthRequest({
+    url: "https://accounts.google.com/o/oauth2/v2/auth",
+    referrer: { url: "https://interviewlab.example" },
+  }), false);
+});
+
+test("keeps embedded NeetCode OAuth inside a secure same-session child window", () => {
+  const mainWindow = new FakeWindow({});
+  const openedExternally = [];
+  installEmbeddedNeetCodeAuthHandler({
+    icon: "icon.png",
+    openExternal: (url) => openedExternally.push(url),
+    window: mainWindow,
+  });
+
+  const authPopup = mainWindow.webContents.openHandler({
+    referrer: { url: "https://neetcode.io/problems/two-integer-sum/question" },
+    url: "https://neetcode.io/__/auth/handler?providerId=google.com",
+  });
+  assert.equal(authPopup.action, "allow");
+  assert.equal(authPopup.overrideBrowserWindowOptions.parent, mainWindow);
+  assert.equal(authPopup.overrideBrowserWindowOptions.webPreferences.partition, undefined);
+  assert.equal(authPopup.overrideBrowserWindowOptions.webPreferences.nodeIntegration, false);
+  assert.equal(authPopup.outlivesOpener, false);
+
+  const externalPopup = mainWindow.webContents.openHandler({
+    referrer: { url: "https://interviewlab.example" },
+    url: "https://example.com/docs",
+  });
+  assert.deepEqual(externalPopup, { action: "deny" });
+  assert.deepEqual(openedExternally, ["https://example.com/docs"]);
+
+  const childWindow = new FakeWindow({});
+  mainWindow.webContents.emit("did-create-window", childWindow);
+  assert.equal(
+    childWindow.webContents.openHandler({ url: "https://accounts.google.com/o/oauth2/v2/auth" }).action,
+    "allow",
+  );
+
+  let prevented = false;
+  childWindow.webContents.emit(
+    "will-redirect",
+    { preventDefault: () => { prevented = true; } },
+    "https://example.com/phishing",
+  );
+  assert.equal(prevented, true);
 });
 
 test("opens a persistent, sandboxed NeetCode window and reuses it", async () => {

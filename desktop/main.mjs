@@ -4,7 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import electronUpdater from "electron-updater";
-import { createNeetCodeWorkspaceController } from "./neetcode-workspace.mjs";
+import {
+  createNeetCodeWorkspaceController,
+  installEmbeddedNeetCodeAuthHandler,
+} from "./neetcode-workspace.mjs";
 import { createUpdateController } from "./update-controller.mjs";
 
 const appId = "io.github.javedshaik1228.interviewlab";
@@ -182,9 +185,10 @@ function createWindow() {
     },
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    openExternal(url);
-    return { action: "deny" };
+  installEmbeddedNeetCodeAuthHandler({
+    icon: desktopIcon,
+    openExternal,
+    window: mainWindow,
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
     if (isAppUrl(url)) return;
