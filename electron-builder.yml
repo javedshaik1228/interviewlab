@@ -12,6 +12,8 @@ directories:
 
 files:
   - main.mjs
+  - preload.mjs
+  - update-controller.mjs
   - package.json
   - build/icon.png
 
@@ -44,6 +46,11 @@ portable:
 
 mac:
   icon: icon.svg
+  publish:
+    provider: github
+    owner: javedshaik1228
+    repo: interviewlab
+    channel: latest-${arch}
   target:
     - target: dmg
     - target: zip
@@ -60,4 +67,7 @@ linux:
   synopsis: Local system-design and coding interview practice
   description: Discussion-first system-design and coding interview practice with bring-your-own provider keys.
 
-publish: null
+publish:
+  provider: github
+  owner: javedshaik1228
+  repo: interviewlab

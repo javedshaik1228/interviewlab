@@ -67,6 +67,14 @@ builds are currently unsigned, so Windows SmartScreen or macOS Gatekeeper may
 show an unknown-publisher warning. Only use artifacts published by this
 repository. Signing can be added later without changing the runtime design.
 
+Installed builds include a **Check for updates** control. InterviewLab checks
+the repository's GitHub Releases, downloads a newer installer in the
+background, and offers to restart when it is ready. The Windows portable build
+opens the latest release instead because a running portable executable cannot
+replace itself safely. Automatic installation on macOS requires releases to be
+code-signed and notarized; unsigned development releases still need to be
+downloaded manually.
+
 To build an executable for the operating system you are currently using:
 
 ```bash
@@ -77,7 +85,8 @@ npm run desktop:dist
 Artifacts are written to `dist-desktop`. Run `npm run desktop:run` to build and
 launch the desktop app locally without creating an installer. The release
 workflow builds every supported operating system on its native runner; pushing
-a version tag such as `v0.1.0` publishes all artifacts to a GitHub release.
+a version tag such as `v0.1.0` synchronizes the app version and publishes all
+installers plus their update metadata to a GitHub release.
 
 ## Self-host with Docker
 

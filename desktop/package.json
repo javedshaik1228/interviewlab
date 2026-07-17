@@ -9,5 +9,8 @@
   },
   "homepage": "https://github.com/javedshaik1228/interviewlab",
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  }
 }

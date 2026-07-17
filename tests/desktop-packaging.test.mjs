@@ -20,14 +20,18 @@ async function availablePort() {
 }
 
 test("defines self-contained desktop installers for Windows, macOS, and Linux", async () => {
-  const [packageText, desktopPackageText, launcher, preparer, afterPacker, builderConfig, workflow, readme, gitignore, npmrc, iconSource, iconPng] = await Promise.all([
+  const [packageText, desktopPackageText, launcher, preload, updaterController, preparer, afterPacker, builderConfig, workflow, versionScript, updateControl, readme, gitignore, npmrc, iconSource, iconPng] = await Promise.all([
     readFile(path.join(projectRoot, "package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/main.mjs"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/preload.mjs"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/update-controller.mjs"), "utf8"),
     readFile(path.join(projectRoot, "scripts/prepare-desktop.mjs"), "utf8"),
     readFile(path.join(projectRoot, "desktop/after-pack.cjs"), "utf8"),
     readFile(path.join(projectRoot, "electron-builder.yml"), "utf8"),
     readFile(path.join(projectRoot, ".github/workflows/desktop.yml"), "utf8"),
+    readFile(path.join(projectRoot, "scripts/set-release-version.mjs"), "utf8"),
+    readFile(path.join(projectRoot, "app/components/DesktopUpdateControl.tsx"), "utf8"),
     readFile(path.join(projectRoot, "README.md"), "utf8"),
     readFile(path.join(projectRoot, ".gitignore"), "utf8"),
     readFile(path.join(projectRoot, ".npmrc"), "utf8"),
@@ -39,10 +43,12 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
 
   assert.equal(packageJson.main, "desktop/main.mjs");
   assert.match(packageJson.scripts["desktop:prepare"], /prepare-desktop\.mjs/);
+  assert.match(packageJson.scripts["desktop:deps"], /npm ci --prefix desktop/);
   assert.match(packageJson.scripts["desktop:run"], /electron \./);
   assert.match(packageJson.scripts["desktop:dist"], /electron-builder/);
   assert.match(packageJson.devDependencies.electron, /^43\./);
   assert.match(packageJson.devDependencies["electron-builder"], /^26\./);
+  assert.equal(desktopPackageJson.dependencies["electron-updater"], "6.8.9");
   assert.equal(desktopPackageJson.homepage, "https://github.com/javedshaik1228/interviewlab");
   assert.match(desktopPackageJson.author.email, /@users\.noreply\.github\.com$/);
 
@@ -56,6 +62,13 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(launcher, /sandbox:\s*true/);
   assert.match(launcher, /setWindowOpenHandler/);
   assert.match(launcher, /new URL\("\.\/build\/icon\.png", import\.meta\.url\)/);
+  assert.match(launcher, /new URL\("\.\/preload\.mjs", import\.meta\.url\)/);
+  assert.match(launcher, /createUpdateController/);
+  assert.match(launcher, /ipcMain\.handle/);
+  assert.match(preload, /contextBridge\.exposeInMainWorld\("interviewLabDesktop"/);
+  assert.match(preload, /ipcRenderer\.invoke/);
+  assert.match(updaterController, /update-downloaded/);
+  assert.match(updaterController, /quitAndInstall/);
   assert.match(preparer, /path\.join\(projectRoot, "\.next", "static"\)/);
   assert.match(preparer, /public/);
   assert.match(afterPacker, /getResourcesDir/);
@@ -72,6 +85,10 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(builderConfig, /buildResources:\s*build/);
   assert.equal(builderConfig.match(/^\s+icon:\s*icon\.svg$/gm)?.length, 3);
   assert.match(builderConfig, /- build\/icon\.png/);
+  assert.match(builderConfig, /- preload\.mjs/);
+  assert.match(builderConfig, /- update-controller\.mjs/);
+  assert.match(builderConfig, /provider:\s*github/);
+  assert.match(builderConfig, /channel:\s*latest-\$\{arch\}/);
   assert.match(iconSource, /viewBox="0 0 1024 1024"/);
   assert.match(iconSource, /#18211f/);
   assert.match(iconSource, /#ee6b4d/);
@@ -86,6 +103,8 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /actions\/upload-artifact@v6/);
   assert.match(workflow, /actions\/download-artifact@v7/);
+  assert.match(workflow, /set-release-version\.mjs/);
+  assert.match(workflow, /dist-desktop\/latest\*\.yml/);
   assert.match(workflow, /dist-desktop\/\*\.exe/);
   assert.match(workflow, /dist-desktop\/\*\.dmg/);
   assert.match(workflow, /dist-desktop\/\*\.AppImage/);
@@ -96,6 +115,10 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(workflow, /--repo "\$GITHUB_REPOSITORY"/);
   assert.match(workflow, /--target "\$GITHUB_SHA"/);
   assert.match(workflow, /gh release create/);
+  assert.match(versionScript, /releaseVersionFromTag/);
+  assert.match(versionScript, /desktop\/package-lock\.json/);
+  assert.match(updateControl, /Check for updates/);
+  assert.match(updateControl, /Restart to update/);
   assert.match(readme, /Desktop executables/);
   assert.match(readme, /Windows.*macOS.*Linux/is);
   assert.match(gitignore, /dist-desktop/);

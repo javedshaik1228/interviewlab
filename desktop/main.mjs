@@ -2,16 +2,46 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, dialog, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
+import electronUpdater from "electron-updater";
+import { createUpdateController } from "./update-controller.mjs";
 
 const appId = "io.github.javedshaik1228.interviewlab";
 const desktopIcon = fileURLToPath(new URL("./build/icon.png", import.meta.url));
+const desktopPreload = fileURLToPath(new URL("./preload.mjs", import.meta.url));
 const loopbackHost = "127.0.0.1";
+const latestReleaseUrl = "https://github.com/javedshaik1228/interviewlab/releases/latest";
 const smokeTest = process.env.INTERVIEWLAB_SMOKE_TEST === "1";
+const updateChannels = {
+  check: "interviewlab:update:check",
+  getStatus: "interviewlab:update:get-status",
+  install: "interviewlab:update:install",
+  status: "interviewlab:update:status",
+};
+const { autoUpdater } = electronUpdater;
 let appOrigin = "";
 let mainWindow = null;
 let serverProcess = null;
 let shuttingDown = false;
+let updateController = null;
+
+function initializeUpdater() {
+  updateController = createUpdateController({
+    currentVersion: app.getVersion(),
+    isPackaged: app.isPackaged,
+    isPortable: process.platform === "win32" && Boolean(process.env.PORTABLE_EXECUTABLE_FILE),
+    notify: (status) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) window.webContents.send(updateChannels.status, status);
+      }
+    },
+    openLatestRelease: () => shell.openExternal(latestReleaseUrl),
+    updater: autoUpdater,
+  });
+  ipcMain.handle(updateChannels.getStatus, () => updateController.getStatus());
+  ipcMain.handle(updateChannels.check, () => updateController.checkForUpdates());
+  ipcMain.handle(updateChannels.install, () => updateController.installUpdate());
+}
 
 function standaloneRoot() {
   return app.isPackaged
@@ -128,6 +158,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: desktopPreload,
       sandbox: true,
       webSecurity: true,
     },
@@ -165,6 +196,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     try {
+      initializeUpdater();
       await startServer();
       createWindow();
     } catch (error) {

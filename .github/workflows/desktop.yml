@@ -16,6 +16,7 @@ on:
       - "desktop/**"
       - "public/**"
       - "scripts/prepare-desktop.mjs"
+      - "scripts/set-release-version.mjs"
       - "electron-builder.yml"
       - "next.config.ts"
       - "package.json"
@@ -65,6 +66,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Synchronize release version
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: node scripts/set-release-version.mjs
+
       - name: Build native executables
         run: npm run desktop:dist
 
@@ -77,6 +84,7 @@ jobs:
             dist-desktop/*.blockmap
             dist-desktop/*.dmg
             dist-desktop/*.zip
+            dist-desktop/latest*.yml
             dist-desktop/*.AppImage
             dist-desktop/*.deb
           if-no-files-found: error

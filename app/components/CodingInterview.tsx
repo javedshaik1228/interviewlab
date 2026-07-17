@@ -24,6 +24,7 @@ import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
 import { requestInterviewerTurn } from "../lib/provider-client";
 import { getProviderLabel, getProviderRecoveryHint, ProviderConnection } from "../lib/provider-types";
 import { ChatDockRail } from "./ChatDockRail";
+import { DesktopUpdateControl } from "./DesktopUpdateControl";
 
 type Props = {
   level: Level;
@@ -131,6 +132,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           <div><strong>{problem.title}</strong><small>NeetCode 150 · {getProviderLabel(provider.id)} interviewer</small></div>
         </div>
         <div className="header-actions">
+          <DesktopUpdateControl compact />
           <button className="timer-button" onClick={onTogglePause} type="button" aria-label={isPaused ? "Resume timer" : "Pause timer"}>
             <Clock3 size={16} /><span>{formatTime(seconds)}</span><small>{isPaused ? "paused" : "live"}</small>
           </button>

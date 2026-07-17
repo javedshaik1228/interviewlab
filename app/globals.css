@@ -138,6 +138,39 @@ textarea:focus-visible {
   gap: 7px;
 }
 
+.landing-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.desktop-update-button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.desktop-update-button:hover:not(:disabled) { border-color: var(--coral); }
+.desktop-update-button:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.desktop-update-button:disabled { cursor: default; opacity: 0.62; }
+.desktop-update-button small { color: var(--muted); font-size: 8px; font-weight: 500; }
+.desktop-update-button.compact { height: 36px; }
+.desktop-update-button.phase-downloaded { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.desktop-update-button .spinning { animation: update-spin 0.9s linear infinite; }
+
+@keyframes update-spin { to { transform: rotate(360deg); } }
+
 .onboarding-layout {
   align-items: center;
   display: grid;
@@ -664,6 +697,8 @@ textarea:focus-visible {
   .onboarding-page { overflow: auto; }
   .landing-header { padding: 20px; }
   .landing-note { display: none; }
+  .desktop-update-button.compact { justify-content: center; padding: 0; width: 36px; }
+  .desktop-update-button.compact span { display: none; }
   .onboarding-layout { display: flex; flex-direction: column; gap: 32px; padding: 35px 18px 100px; }
   .onboarding-intro h1 { font-size: 48px; }
   .onboarding-intro > p { font-size: 14px; }
@@ -715,4 +750,5 @@ textarea:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  .desktop-update-button .spinning { animation: none; }
 }

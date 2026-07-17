@@ -209,6 +209,26 @@ test("supports installed desktop agents with a session-only API-key fallback", a
   assert.doesNotMatch(css, /\.provider-built-in-note/);
 });
 
+test("offers desktop updates without exposing Electron APIs to the website", async () => {
+  const [app, codingRoom, updateControl, updateTypes, css] = await Promise.all([
+    readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/DesktopUpdateControl.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/desktop-update.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /DesktopUpdateControl/);
+  assert.match(codingRoom, /DesktopUpdateControl/);
+  assert.match(updateControl, /window\.interviewLabDesktop/);
+  assert.match(updateControl, /aria-live="polite"/);
+  assert.match(updateTypes, /interface DesktopUpdateBridge/);
+  assert.match(css, /\.desktop-update-button/);
+
+  const response = await render();
+  assert.doesNotMatch(await response.text(), /Check for updates/);
+});
+
 test("does not expose local desktop agents from a normal web server", async () => {
   const response = await fetch(`${baseUrl}/api/interviewer`);
   assert.equal(response.status, 200);

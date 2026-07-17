@@ -41,6 +41,7 @@ import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/questio
 import { assessDesign } from "../lib/design-assessment";
 import { CodingInterview } from "./CodingInterview";
 import { ChatDockRail } from "./ChatDockRail";
+import { DesktopUpdateControl } from "./DesktopUpdateControl";
 import { detectLocalAgents, requestInterviewerTurn } from "../lib/provider-client";
 import {
   defaultProviderModels,
@@ -326,7 +327,10 @@ export function InterviewApp() {
       <main className="onboarding-page">
         <header className="landing-header">
           <Brand />
-          <div className="landing-note"><ShieldCheck size={16} /> {getProviderLabel(provider.id)} selected · {provider.mode === "local" ? "uses your existing local sign-in" : "interview context is sent only to that API"}</div>
+          <div className="landing-actions">
+            <DesktopUpdateControl />
+            <div className="landing-note"><ShieldCheck size={16} /> {getProviderLabel(provider.id)} selected · {provider.mode === "local" ? "uses your existing local sign-in" : "interview context is sent only to that API"}</div>
+          </div>
         </header>
 
         <section className="onboarding-layout">
@@ -531,6 +535,7 @@ export function InterviewApp() {
           <div><strong>{scenario.shortName}</strong><small>{sessionMode === "guided" ? "Guided learning" : `${levelOptions.find((item) => item.id === level)?.label} round`}</small></div>
         </div>
         <div className="header-actions">
+          <DesktopUpdateControl compact />
           <button className="timer-button" onClick={togglePause} type="button" aria-label={isPaused ? "Resume timer" : "Pause timer"}>
             <Clock3 size={16} /><span>{formatTime(seconds)}</span><small>{isPaused ? "paused" : "live"}</small>
           </button>
