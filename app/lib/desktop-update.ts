@@ -21,6 +21,7 @@ export interface DesktopUpdateBridge {
   checkForUpdates: () => Promise<DesktopUpdateStatus>;
   getUpdateStatus: () => Promise<DesktopUpdateStatus>;
   installUpdate: () => Promise<boolean>;
+  openNeetCodeWorkspace: (url: string) => Promise<boolean>;
   onUpdateStatus: (callback: (status: DesktopUpdateStatus) => void) => () => void;
 }
 

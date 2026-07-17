@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import electronUpdater from "electron-updater";
+import { createNeetCodeWorkspaceController } from "./neetcode-workspace.mjs";
 import { createUpdateController } from "./update-controller.mjs";
 
 const appId = "io.github.javedshaik1228.interviewlab";
@@ -12,6 +13,9 @@ const desktopPreload = fileURLToPath(new URL("./preload.mjs", import.meta.url));
 const loopbackHost = "127.0.0.1";
 const latestReleaseUrl = "https://github.com/javedshaik1228/interviewlab/releases/latest";
 const smokeTest = process.env.INTERVIEWLAB_SMOKE_TEST === "1";
+const neetcodeChannels = {
+  open: "interviewlab:neetcode:open",
+};
 const updateChannels = {
   check: "interviewlab:update:check",
   getStatus: "interviewlab:update:get-status",
@@ -21,6 +25,7 @@ const updateChannels = {
 const { autoUpdater } = electronUpdater;
 let appOrigin = "";
 let mainWindow = null;
+let neetcodeWorkspace = null;
 let serverProcess = null;
 let shuttingDown = false;
 let updateController = null;
@@ -41,6 +46,19 @@ function initializeUpdater() {
   ipcMain.handle(updateChannels.getStatus, () => updateController.getStatus());
   ipcMain.handle(updateChannels.check, () => updateController.checkForUpdates());
   ipcMain.handle(updateChannels.install, () => updateController.installUpdate());
+}
+
+function initializeNeetCodeWorkspace() {
+  neetcodeWorkspace = createNeetCodeWorkspaceController({
+    BrowserWindow,
+    getParentWindow: () => mainWindow,
+    getSession: (partition) => session.fromPartition(partition),
+    icon: desktopIcon,
+  });
+  ipcMain.handle(neetcodeChannels.open, (event, url) => {
+    if (!event.senderFrame || !isAppUrl(event.senderFrame.url)) return false;
+    return neetcodeWorkspace.open(url);
+  });
 }
 
 function standaloneRoot() {
@@ -196,6 +214,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     try {
+      initializeNeetCodeWorkspace();
       initializeUpdater();
       await startServer();
       createWindow();

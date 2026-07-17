@@ -61,12 +61,16 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(launcher, /contextIsolation:\s*true/);
   assert.match(launcher, /sandbox:\s*true/);
   assert.match(launcher, /setWindowOpenHandler/);
+  assert.match(launcher, /createNeetCodeWorkspaceController/);
+  assert.match(launcher, /neetcodeChannels\.open/);
+  assert.match(launcher, /neetcodeWorkspace\.open/);
   assert.match(launcher, /new URL\("\.\/build\/icon\.png", import\.meta\.url\)/);
   assert.match(launcher, /new URL\("\.\/preload\.mjs", import\.meta\.url\)/);
   assert.match(launcher, /createUpdateController/);
   assert.match(launcher, /ipcMain\.handle/);
   assert.match(preload, /contextBridge\.exposeInMainWorld\("interviewLabDesktop"/);
   assert.match(preload, /ipcRenderer\.invoke/);
+  assert.match(preload, /openNeetCodeWorkspace/);
   assert.match(updaterController, /update-downloaded/);
   assert.match(updaterController, /quitAndInstall/);
   assert.match(preparer, /path\.join\(projectRoot, "\.next", "static"\)/);

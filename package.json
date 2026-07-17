@@ -30,7 +30,7 @@
     "video:audio:voice": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/generate-product-demo-audio.mjs --voice-only",
     "video:render": "remotion render remotion/index.ts InterviewLabProductDemo outputs/interviewlab-product-demo-raw.mp4 && node scripts/normalize-product-demo-audio.mjs",
     "video:preview": "remotion still remotion/index.ts InterviewLabProductDemo outputs/interviewlab-product-demo-preview.png --frame=680",
-    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/desktop-updater.test.mjs tests/local-agent-runtime.test.mjs tests/remotion-demo.test.mjs tests/rendered-html.test.mjs",
+    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/desktop-updater.test.mjs tests/local-agent-runtime.test.mjs tests/neetcode-workspace.test.mjs tests/remotion-demo.test.mjs tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-desktop --ignore-pattern .next",
     "audit:prod": "npm audit --omit=dev"
   },

@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileWarning,
   Lightbulb,
+  LogIn,
   MessageSquareText,
   RotateCcw,
   Send,
@@ -120,6 +121,18 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
     setShowNotes(true);
   };
 
+  const openNeetCodeWorkspace = async () => {
+    const bridge = window.interviewLabDesktop;
+    if (bridge?.openNeetCodeWorkspace) {
+      try {
+        if (await bridge.openNeetCodeWorkspace(problem.sourceUrl)) return;
+      } catch {
+        // Fall back to the normal browser when the desktop workspace cannot open.
+      }
+    }
+    window.open(problem.sourceUrl, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <main className="interview-page coding-round-page">
       <header className="interview-header">
@@ -153,7 +166,9 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
             </div>
             <h1>{problem.title}</h1>
             <p>Read the complete official prompt in the Problem tab, then clarify, reason, implement, and optimize without leaving InterviewLab.</p>
-            <a href={problem.sourceUrl} target="_blank" rel="noreferrer">Open directly if the embed is unavailable <ExternalLink size={12} /></a>
+            <button className="neetcode-workspace-link" onClick={() => void openNeetCodeWorkspace()} type="button">
+              Open authenticated NeetCode workspace <ExternalLink size={12} />
+            </button>
           </div>
 
           <div className="coding-message-list" aria-live="polite">
@@ -246,7 +261,10 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           {workspaceTab === "problem" ? (
             <footer className="code-footer problem-footer">
               <span><BookOpen size={13} /> Official content stays on NeetCode and is displayed inside InterviewLab.</span>
-              <button onClick={() => setWorkspaceTab("code")} type="button">Start coding <ArrowRight size={14} /></button>
+              <div className="problem-footer-actions">
+                <button onClick={() => void openNeetCodeWorkspace()} type="button"><LogIn size={14} /> Sign in & run tests</button>
+                <button className="start-coding-button" onClick={() => setWorkspaceTab("code")} type="button">Draft here <ArrowRight size={14} /></button>
+              </div>
             </footer>
           ) : (
             <footer className="code-footer">
