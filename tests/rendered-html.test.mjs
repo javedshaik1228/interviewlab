@@ -134,11 +134,12 @@ test("offers the full guided catalog and rubric-based mock evaluation", async ()
 });
 
 test("adds a NeetCode 150-only coding round with submission notes", async () => {
-  const [app, codingRoom, catalog, engine, css] = await Promise.all([
+  const [app, codingRoom, catalog, engine, desktopBridge, css] = await Promise.all([
     readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/neetcode-catalog.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/coding-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/desktop-update.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
@@ -152,6 +153,9 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(codingRoom, /<iframe/);
   assert.match(codingRoom, /src=\{problem\.sourceUrl\}/);
   assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside InterviewLab/);
+  assert.match(codingRoom, /Sign in & run tests/);
+  assert.match(codingRoom, /openNeetCodeWorkspace/);
+  assert.match(desktopBridge, /openNeetCodeWorkspace/);
   assert.match(codingRoom, /A brute-force solution is acceptable/);
   assert.match(engine, /buildCodingNotes/);
   const liveInterviewEngine = engine.split("export function buildCodingNotes")[0];

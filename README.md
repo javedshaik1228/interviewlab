@@ -13,6 +13,7 @@ coding rounds while an adaptive interviewer challenges their reasoning.
 - Guided learning and realistic mock-interview modes
 - A curated catalog of system-design prompts
 - NeetCode 150 coding rounds with embedded prompts and submission notes
+- Authenticated NeetCode desktop workspace for official test runs
 - Automatic desktop discovery for installed Codex, Claude Code, and Antigravity CLI agents
 - Session-only API-key fallback for OpenAI, Claude, Gemini, and Antigravity APIs
 - Adaptive requirement answers and architecture follow-ups
@@ -53,6 +54,10 @@ On startup, the desktop build checks the executable search path and standard
 per-user install directories for `codex`, `claude`, and `agy`. If one is found,
 InterviewLab selects it automatically and uses the CLI's existing sign-in and
 subscription allowances. The app never reads or copies the CLI's credentials.
+Coding rounds can open the official problem in a dedicated NeetCode window
+inside the desktop app. That window uses an isolated persistent session, so a
+NeetCode sign-in survives app restarts and the official **Run Tests** controls
+work as a first-party page instead of inside a cross-site iframe.
 
 GitHub release builds include:
 
