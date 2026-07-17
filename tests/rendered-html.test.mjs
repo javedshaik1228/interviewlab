@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
 import { once } from "node:events";
@@ -166,12 +168,14 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.doesNotMatch(css, /\.resume-drop|\.summary-label/);
 });
 
-test("requires a session-only BYO provider without a built-in fallback", async () => {
-  const [app, codingRoom, providerTypes, providerRoute, interviewEngine, codingEngine, css, readme] = await Promise.all([
+test("supports installed desktop agents with a session-only API-key fallback", async () => {
+  const [app, codingRoom, providerTypes, providerRoute, localAgentRuntime, desktopMain, interviewEngine, codingEngine, css, readme] = await Promise.all([
     readFile(new URL("../app/components/InterviewApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/CodingInterview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/provider-types.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/interviewer/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/local-agent-runtime.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../desktop/main.mjs", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/interview-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/coding-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -179,21 +183,112 @@ test("requires a session-only BYO provider without a built-in fallback", async (
   ]);
 
   assert.match(app, /Choose your interviewer/);
+  assert.match(app, /No API key needed/);
+  assert.match(app, /Use API key instead/);
   assert.match(app, /Session-only API key/);
   assert.match(app, /providerCanStart/);
   assert.match(codingRoom, /requestInterviewerTurn/);
   assert.match(providerTypes, /"openai" \| "anthropic" \| "gemini" \| "antigravity"/);
+  assert.match(providerTypes, /type LocalAgentId/);
   assert.match(providerRoute, /api\.openai\.com\/v1\/responses/);
   assert.match(providerRoute, /api\.anthropic\.com\/v1\/messages/);
   assert.match(providerRoute, /generativelanguage\.googleapis\.com/);
+  assert.match(providerRoute, /runLocalAgent/);
+  assert.match(localAgentRuntime, /codex/);
+  assert.match(localAgentRuntime, /claude/);
+  assert.match(localAgentRuntime, /agy/);
+  assert.match(localAgentRuntime, /windowsHide:\s*true/);
+  assert.match(desktopMain, /INTERVIEWLAB_DESKTOP:\s*"1"/);
   assert.match(providerRoute, /guardCodingReply/);
   assert.match(providerRoute, /no-store/);
-  assert.match(readme, /No server-owned provider credential\s+or fallback exists/i);
+  assert.match(readme, /installed Codex, Claude Code, or Antigravity CLI/i);
   assert.doesNotMatch(`${app}\n${codingRoom}\n${providerTypes}\n${interviewEngine}\n${codingEngine}`, /\bbuiltin\b|built-in interviewer|createArchitectReply|createCodingReply|providerRequiresKey/i);
   assert.doesNotMatch(providerRoute, /process\.env\.(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE).*KEY/i);
   assert.doesNotMatch(`${app}\n${codingRoom}`, /localStorage|sessionStorage/);
   assert.match(css, /\.provider-picker/);
   assert.doesNotMatch(css, /\.provider-built-in-note/);
+});
+
+test("does not expose local desktop agents from a normal web server", async () => {
+  const response = await fetch(`${baseUrl}/api/interviewer`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), {
+    desktop: false,
+    agents: [
+      { id: "codex", installed: false },
+      { id: "claude-code", installed: false },
+      { id: "antigravity", installed: false },
+    ],
+  });
+});
+
+test("accepts a no-key local agent request only in the desktop runtime", async () => {
+  const bin = await mkdtemp(path.join(os.tmpdir(), "interviewlab-desktop-agent-"));
+  const executable = path.join(bin, process.platform === "win32" ? "codex.cmd" : "codex");
+  const script = process.platform === "win32"
+    ? "@echo off\r\nmore > nul\r\necho Ask about scale.\r\n"
+    : "#!/bin/sh\ncat >/dev/null\nprintf 'Ask about scale.\\n'\n";
+  await writeFile(executable, script);
+  if (process.platform !== "win32") await chmod(executable, 0o755);
+
+  const port = await availablePort();
+  const desktopBaseUrl = `http://127.0.0.1:${port}`;
+  let desktopOutput = "";
+  const desktopServer = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      env: {
+        ...process.env,
+        INTERVIEWLAB_DESKTOP: "1",
+        NEXT_TELEMETRY_DISABLED: "1",
+        PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
+        SITE_URL: "http://localhost:3000",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  desktopServer.stdout.on("data", (chunk) => { desktopOutput += chunk; });
+  desktopServer.stderr.on("data", (chunk) => { desktopOutput += chunk; });
+
+  try {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      if (desktopServer.exitCode !== null) throw new Error(`Desktop Next.js exited before startup.\n${desktopOutput}`);
+      try {
+        const response = await fetch(`${desktopBaseUrl}/api/health`);
+        if (response.ok) break;
+      } catch {
+        // The isolated desktop server is still starting.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    const detectionResponse = await fetch(`${desktopBaseUrl}/api/interviewer`);
+    const detection = await detectionResponse.json();
+    assert.equal(detection.desktop, true);
+    assert.equal(detection.agents.find((agent) => agent.id === "codex")?.installed, true);
+
+    const response = await fetch(`${desktopBaseUrl}/api/interviewer`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: { mode: "local", id: "codex" },
+        round: "system-design",
+        level: "mid",
+        messages: [{ role: "candidate", text: "Let us clarify requirements." }],
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { text: "Ask about scale." });
+  } finally {
+    if (desktopServer.exitCode === null) {
+      desktopServer.kill();
+      await Promise.race([once(desktopServer, "exit"), new Promise((resolve) => setTimeout(resolve, 5000))]);
+    }
+    await rm(bin, { force: true, recursive: true });
+  }
 });
 
 test("rejects incomplete provider requests without caching them", async () => {

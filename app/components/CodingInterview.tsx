@@ -22,7 +22,7 @@ import type { Level } from "../lib/interview-engine";
 import { buildCodingNotes, CodingMessage, createCodingNudge } from "../lib/coding-engine";
 import { pickRandomCodingProblem } from "../lib/neetcode-catalog";
 import { requestInterviewerTurn } from "../lib/provider-client";
-import { getProviderLabel, ProviderConnection } from "../lib/provider-types";
+import { getProviderLabel, getProviderRecoveryHint, ProviderConnection } from "../lib/provider-types";
 import { ChatDockRail } from "./ChatDockRail";
 
 type Props = {
@@ -98,7 +98,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
       const reason = error instanceof Error ? error.message : "Provider request failed.";
       setMessages((current) => [
         ...current,
-        { id: messageId.current++, role: "system", text: `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. Check the API key, model, and quota, then try again.` },
+        { id: messageId.current++, role: "system", text: `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. ${getProviderRecoveryHint(provider)}` },
       ]);
     } finally {
       setIsReplying(false);

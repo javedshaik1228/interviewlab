@@ -75,6 +75,7 @@ async function startServer() {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
       HOSTNAME: loopbackHost,
+      INTERVIEWLAB_DESKTOP: "1",
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
       PORT: String(port),

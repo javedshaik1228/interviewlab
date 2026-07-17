@@ -1,7 +1,11 @@
 import { scenarios } from "../../lib/question-catalog";
-import type { InterviewTurnRequest, ProviderId, ProviderMessage } from "../../lib/provider-types";
+import { getLocalAgentStatuses, runLocalAgent } from "../../lib/local-agent-runtime.mjs";
+import type { InterviewTurnRequest, LocalAgentId, ProviderId, ProviderMessage } from "../../lib/provider-types";
 
 const supportedProviders = new Set<ProviderId>(["openai", "anthropic", "gemini", "antigravity"]);
+const supportedLocalAgents = new Set<LocalAgentId>(["codex", "claude-code", "antigravity"]);
+const desktopRuntime = process.env.INTERVIEWLAB_DESKTOP === "1";
+let localAgentRunning = false;
 const neutralCodingReply = "Reason from the work your current approach repeats and the guarantees in the input. What information could you retain, or what work could you safely discard, to justify a tighter solution?";
 const codingPatterns = [
   /two pointers?/i,
@@ -28,6 +32,8 @@ class ProviderRequestError extends Error {
     super(`${provider} rejected the request (${status}). Check the API key, model, and provider quota.`);
   }
 }
+
+class LocalAgentRequestError extends Error {}
 
 function json(body: unknown, status = 200) {
   return Response.json(body, {
@@ -87,6 +93,23 @@ function buildPrompt(request: InterviewTurnRequest): ProviderPayload {
   };
 }
 
+function compactLocalContext(value: string, headLength: number, tailLength: number) {
+  if (value.length <= headLength + tailLength) return value;
+  return `${value.slice(0, headLength)}\n\n[Earlier context shortened by InterviewLab]\n\n${value.slice(-tailLength)}`;
+}
+
+function buildLocalAgentPrompt(prompt: ProviderPayload) {
+  const transcript = prompt.messages
+    .map((message) => `${message.role === "user" ? "Candidate" : "Interviewer"}: ${message.content}`)
+    .join("\n\n");
+  return [
+    "You are the text-only interviewer inside InterviewLab.",
+    "Return only the next interviewer message. Do not use tools, inspect files, execute commands, modify data, or mention this wrapper.",
+    compactLocalContext(prompt.system, 7_000, 7_000),
+    `Interview transcript:\n${compactLocalContext(transcript, 2_000, 6_000)}`,
+  ].join("\n\n");
+}
+
 function extractOpenAIText(data: Record<string, unknown>) {
   if (typeof data.output_text === "string") return data.output_text;
   const output = Array.isArray(data.output) ? data.output : [];
@@ -126,6 +149,20 @@ async function providerFetch(provider: string, url: string, init: RequestInit) {
 }
 
 async function callProvider(request: InterviewTurnRequest, prompt: ProviderPayload) {
+  if (request.provider.mode === "local") {
+    if (localAgentRunning) throw new LocalAgentRequestError("Another local-agent response is already in progress.");
+    const localPrompt = buildLocalAgentPrompt(prompt);
+    localAgentRunning = true;
+    try {
+      return await runLocalAgent(request.provider.id, localPrompt);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The installed agent could not respond.";
+      throw new LocalAgentRequestError(message);
+    } finally {
+      localAgentRunning = false;
+    }
+  }
+
   const { id, apiKey, model } = request.provider;
   if (id === "openai") {
     const data = await providerFetch("OpenAI", "https://api.openai.com/v1/responses", {
@@ -180,15 +217,29 @@ function guardCodingReply(reply: string, candidateText: string) {
 function validateRequest(value: unknown): value is InterviewTurnRequest {
   if (!value || typeof value !== "object") return false;
   const request = value as Partial<InterviewTurnRequest>;
+  const provider = request.provider;
+  const validProvider = Boolean(
+    provider
+    && (
+      (
+        provider.mode === "local"
+        && desktopRuntime
+        && supportedLocalAgents.has(provider.id as LocalAgentId)
+      )
+      || (
+        provider.mode === "api"
+        && supportedProviders.has(provider.id as ProviderId)
+        && typeof provider.apiKey === "string"
+        && provider.apiKey.length >= 8
+        && provider.apiKey.length <= 512
+        && typeof provider.model === "string"
+        && provider.model.length >= 2
+        && provider.model.length <= 120
+      )
+    )
+  );
   return Boolean(
-    request.provider
-    && supportedProviders.has(request.provider.id as ProviderId)
-    && typeof request.provider.apiKey === "string"
-    && request.provider.apiKey.length >= 8
-    && request.provider.apiKey.length <= 512
-    && typeof request.provider.model === "string"
-    && request.provider.model.length >= 2
-    && request.provider.model.length <= 120
+    validProvider
     && (request.round === "system-design" || request.round === "coding")
     && Array.isArray(request.messages)
     && request.messages.length > 0
@@ -203,6 +254,13 @@ function validateRequest(value: unknown): value is InterviewTurnRequest {
     ))
     && (request.level === "junior" || request.level === "mid" || request.level === "architect")
   );
+}
+
+export async function GET() {
+  const agents = desktopRuntime
+    ? await getLocalAgentStatuses()
+    : Array.from(supportedLocalAgents, (id) => ({ id, installed: false }));
+  return json({ desktop: desktopRuntime, agents });
 }
 
 export async function POST(httpRequest: Request) {
@@ -221,7 +279,9 @@ export async function POST(httpRequest: Request) {
     const text = request.round === "coding" ? guardCodingReply(providerReply, candidateText) : providerReply;
     return json({ text });
   } catch (error) {
-    const message = error instanceof ProviderRequestError ? error.message : "The selected provider is temporarily unavailable.";
+    const message = error instanceof ProviderRequestError || error instanceof LocalAgentRequestError
+      ? error.message
+      : "The selected provider is temporarily unavailable.";
     return json({ error: message }, 502);
   }
 }

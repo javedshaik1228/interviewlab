@@ -24,7 +24,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoardSignals, DiagramBoard } from "./DiagramBoard";
 import {
   deliveryFramework,
@@ -41,10 +41,14 @@ import { pickRandomScenario, questionSourceUrl, scenarios } from "../lib/questio
 import { assessDesign } from "../lib/design-assessment";
 import { CodingInterview } from "./CodingInterview";
 import { ChatDockRail } from "./ChatDockRail";
-import { requestInterviewerTurn } from "../lib/provider-client";
+import { detectLocalAgents, requestInterviewerTurn } from "../lib/provider-client";
 import {
   defaultProviderModels,
   getProviderLabel,
+  getProviderRecoveryHint,
+  localAgentOptions,
+  LocalAgentId,
+  LocalAgentStatus,
   providerOptions,
   ProviderConnection,
   ProviderId,
@@ -102,6 +106,12 @@ export function InterviewApp() {
   const [sessionMode, setSessionMode] = useState<SessionMode>("mock");
   const [scenarioId, setScenarioId] = useState<ScenarioId>("bitly");
   const [scenarioQuery, setScenarioQuery] = useState("");
+  const [providerMode, setProviderMode] = useState<"local" | "api">("local");
+  const [localAgentId, setLocalAgentId] = useState<LocalAgentId>("codex");
+  const [localAgents, setLocalAgents] = useState<LocalAgentStatus[]>(() => (
+    localAgentOptions.map(({ id }) => ({ id, installed: false }))
+  ));
+  const [localAgentDetection, setLocalAgentDetection] = useState<"checking" | "complete">("checking");
   const [providerId, setProviderId] = useState<ProviderId>("openai");
   const [providerApiKey, setProviderApiKey] = useState("");
   const [providerModel, setProviderModel] = useState(defaultProviderModels.openai);
@@ -125,12 +135,14 @@ export function InterviewApp() {
     [scenarioId],
   );
   const frameworkStage = deliveryFramework[frameworkStepIndex];
-  const provider = useMemo<ProviderConnection>(() => ({
-    id: providerId,
-    apiKey: providerApiKey,
-    model: providerModel,
-  }), [providerApiKey, providerId, providerModel]);
-  const providerCanStart = providerApiKey.trim().length >= 8 && providerModel.trim().length >= 2;
+  const provider = useMemo<ProviderConnection>(() => (
+    providerMode === "local"
+      ? { mode: "local", id: localAgentId }
+      : { mode: "api", id: providerId, apiKey: providerApiKey, model: providerModel }
+  ), [localAgentId, providerApiKey, providerId, providerMode, providerModel]);
+  const providerCanStart = provider.mode === "local"
+    ? localAgentDetection === "complete" && localAgents.some((agent) => agent.id === provider.id && agent.installed)
+    : provider.apiKey.trim().length >= 8 && provider.model.trim().length >= 2;
   const candidateText = useMemo(
     () => messages.filter((message) => message.role === "candidate").map((message) => message.text).join(" "),
     [messages],
@@ -141,6 +153,29 @@ export function InterviewApp() {
     if (!query) return scenarios;
     return scenarios.filter((item) => `${item.shortName} ${item.name} ${item.brief} ${item.accent}`.toLowerCase().includes(query));
   }, [scenarioQuery]);
+
+  useEffect(() => {
+    let active = true;
+    detectLocalAgents()
+      .then(({ agents, desktop }) => {
+        if (!active) return;
+        setLocalAgents(agents);
+        const firstInstalled = agents.find((agent) => agent.installed);
+        if (desktop && firstInstalled) {
+          setLocalAgentId(firstInstalled.id);
+          setProviderMode("local");
+        } else {
+          setProviderMode("api");
+        }
+        setLocalAgentDetection("complete");
+      })
+      .catch(() => {
+        if (!active) return;
+        setProviderMode("api");
+        setLocalAgentDetection("complete");
+      });
+    return () => { active = false; };
+  }, []);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -160,6 +195,14 @@ export function InterviewApp() {
     if (nextProvider !== providerId) setProviderApiKey("");
     setProviderId(nextProvider);
     setProviderModel(defaultProviderModels[nextProvider]);
+  };
+
+  const selectInstalledAgent = () => {
+    const selected = localAgents.find((agent) => agent.id === localAgentId && agent.installed)
+      ?? localAgents.find((agent) => agent.installed);
+    if (!selected) return;
+    setLocalAgentId(selected.id);
+    setProviderMode("local");
   };
 
   const beginInterview = () => {
@@ -214,7 +257,7 @@ export function InterviewApp() {
       addMessage("architect", providerReply);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Provider request failed.";
-      addMessage("system", `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. Check the API key, model, and quota, then try again.`);
+      addMessage("system", `${getProviderLabel(provider.id)} unavailable · ${reason} No fallback was used. ${getProviderRecoveryHint(provider)}`);
     } finally {
       setIsReplying(false);
     }
@@ -283,7 +326,7 @@ export function InterviewApp() {
       <main className="onboarding-page">
         <header className="landing-header">
           <Brand />
-          <div className="landing-note"><ShieldCheck size={16} /> {getProviderLabel(provider.id)} selected · interview context is sent only to that API</div>
+          <div className="landing-note"><ShieldCheck size={16} /> {getProviderLabel(provider.id)} selected · {provider.mode === "local" ? "uses your existing local sign-in" : "interview context is sent only to that API"}</div>
         </header>
 
         <section className="onboarding-layout">
@@ -437,10 +480,16 @@ export function InterviewApp() {
 
                 <ProviderPicker
                   apiKey={providerApiKey}
+                  localAgentDetection={localAgentDetection}
+                  localAgentId={localAgentId}
+                  localAgents={localAgents}
                   model={providerModel}
                   onApiKeyChange={setProviderApiKey}
+                  onLocalAgentChange={setLocalAgentId}
                   onModelChange={setProviderModel}
+                  onProviderModeChange={(mode) => mode === "local" ? selectInstalledAgent() : setProviderMode("api")}
                   onProviderChange={selectProvider}
+                  providerMode={providerMode}
                   providerId={providerId}
                 />
 
@@ -668,24 +717,67 @@ export function InterviewApp() {
 
 function ProviderPicker({
   apiKey,
+  localAgentDetection,
+  localAgentId,
+  localAgents,
   model,
   onApiKeyChange,
+  onLocalAgentChange,
   onModelChange,
+  onProviderModeChange,
   onProviderChange,
+  providerMode,
   providerId,
 }: {
   apiKey: string;
+  localAgentDetection: "checking" | "complete";
+  localAgentId: LocalAgentId;
+  localAgents: LocalAgentStatus[];
   model: string;
   onApiKeyChange: (value: string) => void;
+  onLocalAgentChange: (agent: LocalAgentId) => void;
   onModelChange: (value: string) => void;
+  onProviderModeChange: (mode: "local" | "api") => void;
   onProviderChange: (provider: ProviderId) => void;
+  providerMode: "local" | "api";
   providerId: ProviderId;
 }) {
   const selectedProvider = providerOptions.find((option) => option.id === providerId) ?? providerOptions[0];
+  const selectedLocalAgent = localAgentOptions.find((option) => option.id === localAgentId) ?? localAgentOptions[0];
+  const hasInstalledAgent = localAgents.some((agent) => agent.installed);
   return (
     <fieldset className="provider-picker">
       <legend><Bot size={15} /> Choose your interviewer</legend>
-      <p>Bring your own API key for live follow-ups. InterviewLab has no built-in provider or shared API budget.</p>
+      {providerMode === "local" ? (
+        <>
+          <p>Use a signed-in coding agent already installed on this computer. No API key needed.</p>
+          <div className="provider-grid local-agent-grid">
+            {localAgentOptions.map((option) => {
+              const installed = localAgents.some((agent) => agent.id === option.id && agent.installed);
+              return (
+                <button
+                  aria-pressed={localAgentId === option.id}
+                  className={localAgentId === option.id ? "selected" : ""}
+                  disabled={!installed}
+                  key={option.id}
+                  onClick={() => onLocalAgentChange(option.id)}
+                  type="button"
+                >
+                  <strong>{option.label}</strong>
+                  <span>{localAgentDetection === "checking" ? "Checking…" : installed ? <><Check size={11} /> Ready</> : "Not found"}</span>
+                </button>
+              );
+            })}
+          </div>
+          <small className="provider-description">{selectedLocalAgent.description}</small>
+          <div className="provider-credentials local-agent-credentials">
+            <p><ShieldCheck size={13} /> InterviewLab sends each turn to the local CLI in a restricted, non-interactive session. The CLI uses its existing account sign-in.</p>
+            <button className="provider-mode-toggle" onClick={() => onProviderModeChange("api")} type="button"><KeyRound size={12} /> Use API key instead</button>
+          </div>
+        </>
+      ) : (
+        <>
+      <p>{hasInstalledAgent ? "Prefer your installed agent? Switch back without entering a key." : "Use a session-only API key for live follow-ups."}</p>
       <div className="provider-grid">
         {providerOptions.map((option) => (
           <button
@@ -727,6 +819,9 @@ function ProviderPicker({
         </label>
         <p><ShieldCheck size={13} /> Kept only in this tab’s memory, sent through InterviewLab to the selected API, and never saved. Consumer-app subscriptions and API billing are separate.</p>
       </div>
+      {hasInstalledAgent && <button className="provider-mode-toggle provider-mode-toggle-standalone" onClick={() => onProviderModeChange("local")} type="button"><Bot size={12} /> Use installed agent</button>}
+        </>
+      )}
     </fieldset>
   );
 }

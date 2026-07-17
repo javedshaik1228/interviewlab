@@ -23,7 +23,7 @@
     "desktop:run": "npm run desktop:prepare && electron .",
     "desktop:pack": "npm run desktop:prepare && electron-builder --projectDir desktop --config ../electron-builder.yml --dir",
     "desktop:dist": "npm run desktop:prepare && electron-builder --projectDir desktop --config ../electron-builder.yml",
-    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/rendered-html.test.mjs",
+    "test": "npm run desktop:prepare && node --test tests/desktop-packaging.test.mjs tests/local-agent-runtime.test.mjs tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-desktop --ignore-pattern .next",
     "audit:prod": "npm audit --omit=dev"
   },

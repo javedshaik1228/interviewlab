@@ -408,7 +408,11 @@ textarea:focus-visible {
 .provider-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .provider-grid button { align-items: center; background: #fff; border: 1px solid #d8d6ce; border-radius: 99px; cursor: pointer; display: flex; font-size: 9px; gap: 5px; min-height: 29px; padding: 0 9px; }
 .provider-grid button.selected { background: #fff7f3; border-color: var(--coral); color: var(--coral-dark); }
+.provider-grid button:disabled { cursor: not-allowed; opacity: 0.48; }
 .provider-grid button span { align-items: center; display: flex; }
+.local-agent-grid button { align-items: flex-start; border-radius: 9px; flex-direction: column; gap: 2px; min-width: 104px; }
+.local-agent-grid button span { color: var(--muted); font-size: 7px; gap: 3px; }
+.local-agent-grid button.selected span { color: var(--coral-dark); }
 .provider-description { color: var(--muted); display: block; font-size: 8px; line-height: 1.4; margin-top: 7px; }
 .provider-credentials { background: #f5f4ee; border: 1px solid #dedcd4; border-radius: 10px; display: grid; gap: 8px; margin-top: 9px; padding: 10px; }
 .provider-credentials label { display: grid; gap: 4px; }
@@ -416,6 +420,10 @@ textarea:focus-visible {
 .provider-credentials input { background: #fff; border: 1px solid #d6d4cc; border-radius: 7px; color: var(--ink); font-family: var(--font-geist-mono), monospace; font-size: 10px; min-height: 34px; padding: 0 9px; width: 100%; }
 .provider-credentials > p { align-items: flex-start; color: var(--muted); display: flex; font-size: 8px; gap: 5px; line-height: 1.45; margin: 1px 0 0; }
 .provider-credentials > p svg { color: var(--green); flex: 0 0 auto; margin-top: 1px; }
+.provider-credentials.local-agent-credentials { align-items: start; display: flex; justify-content: space-between; }
+.provider-mode-toggle { align-items: center; background: #fff; border: 1px solid #d6d4cc; border-radius: 7px; color: var(--ink); cursor: pointer; display: inline-flex; flex: 0 0 auto; font-size: 8px; font-weight: 700; gap: 5px; min-height: 28px; padding: 0 8px; }
+.provider-mode-toggle:hover { border-color: var(--coral); color: var(--coral-dark); }
+.provider-mode-toggle-standalone { margin-top: 8px; }
 
 .landing-marquee {
   align-items: center;

@@ -13,16 +13,21 @@ coding rounds while an adaptive interviewer challenges their reasoning.
 - Guided learning and realistic mock-interview modes
 - A curated catalog of system-design prompts
 - NeetCode 150 coding rounds with embedded prompts and submission notes
-- Session-only provider choice for OpenAI, Claude, Gemini, and Antigravity APIs
+- Automatic desktop discovery for installed Codex, Claude Code, and Antigravity CLI agents
+- Session-only API-key fallback for OpenAI, Claude, Gemini, and Antigravity APIs
 - Adaptive requirement answers and architecture follow-ups
 - Embedded Excalidraw canvas with label/topology-aware review
 - Coverage tracking and an end-of-session debrief
 - Responsive interview workspace for desktop and mobile
 
-Every interviewer provider uses a bring-your-own-key flow. Keys remain in the
-active browser tab, are sent only through the same-origin interviewer endpoint,
-and are not persisted by the application. No server-owned provider credential
-or fallback exists; failed provider requests stop and ask the user to retry.
+The desktop app can use an installed Codex, Claude Code, or Antigravity CLI
+directly through that tool's existing account sign-in, so no API key is needed.
+Local agents run non-interactively from a neutral temporary directory with
+restricted tool access. API-key mode remains available as a fallback and is the
+only provider mode exposed by browser, Node.js, and Docker deployments. Keys
+remain in the active browser tab, pass only through the same-origin interviewer
+endpoint, and are never persisted. InterviewLab has no server-owned provider
+credential or shared AI budget.
 
 ## Local development
 
@@ -44,6 +49,10 @@ InterviewLab can run as a self-contained desktop application. The executable
 starts its own server on a random loopback-only port, so no Docker, Node.js
 installation, hosted backend, or inbound network access is required. Internet
 access is still required when you ask an external AI provider for a response.
+On startup, the desktop build checks the executable search path and standard
+per-user install directories for `codex`, `claude`, and `agy`. If one is found,
+InterviewLab selects it automatically and uses the CLI's existing sign-in and
+subscription allowances. The app never reads or copies the CLI's credentials.
 
 GitHub release builds include:
 
@@ -72,9 +81,10 @@ a version tag such as `v0.1.0` publishes all artifacts to a GitHub release.
 
 ## Self-host with Docker
 
-Docker is the recommended portable deployment path. No server-side AI-provider
-keys are required because candidates supply external-provider keys in their
-active browser session.
+Docker is the recommended portable deployment path. Host CLI agents are not
+exposed inside the container. No server-side AI-provider keys are required
+because candidates supply external-provider keys in their active browser
+session.
 
 ```bash
 cp .env.example .env
