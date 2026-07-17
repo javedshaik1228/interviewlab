@@ -82,6 +82,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(workflow, /release_tag:/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /RELEASE_TAG: \$\{\{ inputs\.release_tag \|\| github\.ref_name \}\}/);
+  assert.match(workflow, /--repo "\$GITHUB_REPOSITORY"/);
   assert.match(workflow, /--target "\$GITHUB_SHA"/);
   assert.match(workflow, /gh release create/);
   assert.match(readme, /Desktop executables/);
