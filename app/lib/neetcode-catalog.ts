@@ -140,12 +140,19 @@ export const neetcodeProblems: CodingProblem[] = groups.flatMap(([category, prob
   }));
 });
 
+const codingDifficultiesByLevel: Record<Level, readonly CodingDifficulty[]> = {
+  junior: ["Easy"],
+  mid: ["Easy", "Medium"],
+  architect: ["Medium", "Hard"],
+};
+
+export function codingProblemsForLevel(level: Level): CodingProblem[] {
+  const allowedDifficulties = codingDifficultiesByLevel[level];
+  return neetcodeProblems.filter((problem) => allowedDifficulties.includes(problem.difficulty));
+}
+
 export function pickRandomCodingProblem(level: Level, randomValue = Math.random()): CodingProblem {
-  const eligible = neetcodeProblems.filter((problem) => {
-    if (level === "junior") return problem.difficulty !== "Hard";
-    if (level === "architect") return problem.difficulty !== "Easy";
-    return true;
-  });
+  const eligible = codingProblemsForLevel(level);
   const bounded = Math.max(0, Math.min(0.999999, randomValue));
   return eligible[Math.floor(bounded * eligible.length)];
 }
