@@ -1,9 +1,11 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, session, shell } from "electron";
 
 const appId = "io.github.javedshaik1228.interviewlab";
+const desktopIcon = fileURLToPath(new URL("./build/icon.png", import.meta.url));
 const loopbackHost = "127.0.0.1";
 const smokeTest = process.env.INTERVIEWLAB_SMOKE_TEST === "1";
 let appOrigin = "";
@@ -121,6 +123,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: "#f3f1e9",
+    icon: desktopIcon,
     title: "InterviewLab",
     webPreferences: {
       contextIsolation: true,

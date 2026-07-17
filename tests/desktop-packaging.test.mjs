@@ -20,7 +20,7 @@ async function availablePort() {
 }
 
 test("defines self-contained desktop installers for Windows, macOS, and Linux", async () => {
-  const [packageText, desktopPackageText, launcher, preparer, afterPacker, builderConfig, workflow, readme, gitignore, npmrc] = await Promise.all([
+  const [packageText, desktopPackageText, launcher, preparer, afterPacker, builderConfig, workflow, readme, gitignore, npmrc, iconSource, iconPng] = await Promise.all([
     readFile(path.join(projectRoot, "package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/package.json"), "utf8"),
     readFile(path.join(projectRoot, "desktop/main.mjs"), "utf8"),
@@ -31,6 +31,8 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
     readFile(path.join(projectRoot, "README.md"), "utf8"),
     readFile(path.join(projectRoot, ".gitignore"), "utf8"),
     readFile(path.join(projectRoot, ".npmrc"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/build/icon.svg"), "utf8"),
+    readFile(path.join(projectRoot, "desktop/build/icon.png")),
   ]);
   const packageJson = JSON.parse(packageText);
   const desktopPackageJson = JSON.parse(desktopPackageText);
@@ -53,6 +55,7 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(launcher, /contextIsolation:\s*true/);
   assert.match(launcher, /sandbox:\s*true/);
   assert.match(launcher, /setWindowOpenHandler/);
+  assert.match(launcher, /new URL\("\.\/build\/icon\.png", import\.meta\.url\)/);
   assert.match(preparer, /path\.join\(projectRoot, "\.next", "static"\)/);
   assert.match(preparer, /public/);
   assert.match(afterPacker, /getResourcesDir/);
@@ -66,6 +69,14 @@ test("defines self-contained desktop installers for Windows, macOS, and Linux", 
   assert.match(builderConfig, /target:\s*AppImage/);
   assert.match(builderConfig, /target:\s*deb/);
   assert.match(builderConfig, /afterPack:\s*desktop\/after-pack\.cjs/);
+  assert.match(builderConfig, /buildResources:\s*build/);
+  assert.equal(builderConfig.match(/^\s+icon:\s*icon\.svg$/gm)?.length, 3);
+  assert.match(builderConfig, /- build\/icon\.png/);
+  assert.match(iconSource, /viewBox="0 0 1024 1024"/);
+  assert.match(iconSource, /#18211f/);
+  assert.match(iconSource, /#ee6b4d/);
+  assert.equal(iconPng.readUInt32BE(16), 1024);
+  assert.equal(iconPng.readUInt32BE(20), 1024);
   assert.match(workflow, /windows-latest/);
   assert.match(workflow, /macos-latest/);
   assert.match(workflow, /macos-15-intel/);

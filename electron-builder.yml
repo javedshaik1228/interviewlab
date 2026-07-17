@@ -7,11 +7,13 @@ npmRebuild: false
 afterPack: desktop/after-pack.cjs
 
 directories:
+  buildResources: build
   output: ../dist-desktop
 
 files:
   - main.mjs
   - package.json
+  - build/icon.png
 
 extraResources:
   - from: ../.next/standalone
@@ -20,6 +22,7 @@ extraResources:
       - "**/*"
 
 win:
+  icon: icon.svg
   target:
     - target: nsis
       arch:
@@ -40,6 +43,7 @@ portable:
   artifactName: "${productName}-Portable-${version}-Windows-${arch}.${ext}"
 
 mac:
+  icon: icon.svg
   target:
     - target: dmg
     - target: zip
@@ -47,6 +51,7 @@ mac:
   category: public.app-category.developer-tools
 
 linux:
+  icon: icon.svg
   target:
     - target: AppImage
     - target: deb
