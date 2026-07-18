@@ -10,7 +10,6 @@ import {
   ExternalLink,
   FileWarning,
   Lightbulb,
-  LogIn,
   MessageSquareText,
   RotateCcw,
   Send,
@@ -261,10 +260,7 @@ export function CodingInterview({ level, language, seconds, isPaused, onTogglePa
           {workspaceTab === "problem" ? (
             <footer className="code-footer problem-footer">
               <span><BookOpen size={13} /> Official content stays on NeetCode and is displayed inside InterviewLab.</span>
-              <div className="problem-footer-actions">
-                <button onClick={() => void openNeetCodeWorkspace()} type="button"><LogIn size={14} /> Sign in & run tests</button>
-                <button className="start-coding-button" onClick={() => setWorkspaceTab("code")} type="button">Draft here <ArrowRight size={14} /></button>
-              </div>
+              <button className="start-coding-button" onClick={() => setWorkspaceTab("code")} type="button">Draft here <ArrowRight size={14} /></button>
             </footer>
           ) : (
             <footer className="code-footer">

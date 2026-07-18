@@ -153,7 +153,8 @@ test("adds a NeetCode 150-only coding round with submission notes", async () => 
   assert.match(codingRoom, /<iframe/);
   assert.match(codingRoom, /src=\{problem\.sourceUrl\}/);
   assert.match(codingRoom, /Official content stays on NeetCode and is displayed inside InterviewLab/);
-  assert.match(codingRoom, /Sign in & run tests/);
+  assert.doesNotMatch(codingRoom, /Sign in & run tests/);
+  assert.match(codingRoom, /Draft here/);
   assert.match(codingRoom, /openNeetCodeWorkspace/);
   assert.match(desktopBridge, /openNeetCodeWorkspace/);
   assert.match(codingRoom, /A brute-force solution is acceptable/);
